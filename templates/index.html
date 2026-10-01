@@ -48,9 +48,23 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
-        if (localStorage.getItem('theme') === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
+        (function() {
+            var currentVersion = 'v0.0.2';
+            var savedVer = localStorage.getItem('icebeats_active_version');
+            if (savedVer !== currentVersion) {
+                // Fresh install or update to latest version: primary theme defaults to white (light)
+                localStorage.setItem('theme', 'light');
+                localStorage.setItem('icebeats_active_version', currentVersion);
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                var theme = localStorage.getItem('theme') || 'light';
+                if (theme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+            }
+        })();
     </script>
 
 <style>
@@ -173,229 +187,282 @@
     cursor: pointer;
 }
 </style>
-    <script>
-        if (localStorage.getItem('theme') === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
-    </script>
 </head>
 <body>
 
     <!-- ONBOARDING OVERLAY -->
     <style id="onboarding-styles">
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(30px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes obFadeUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0)   scale(1); }
         }
-        @keyframes fadeOut {
-            from { opacity: 1; transform: scale(1); }
-            to { opacity: 0; transform: scale(1.05); }
+        @keyframes obFadeOut {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to   { opacity: 0; transform: translateY(-28px) scale(0.97); }
         }
         @keyframes pulseGlow {
-            0% { box-shadow: 0 0 40px rgba(29, 185, 84, 0.2); }
-            50% { box-shadow: 0 0 80px rgba(29, 185, 84, 0.5); }
-            100% { box-shadow: 0 0 40px rgba(29, 185, 84, 0.2); }
+            0%,100% { box-shadow: 0 0 60px rgba(29,185,84,0.15); }
+            50%     { box-shadow: 0 0 120px rgba(29,185,84,0.42); }
         }
-
+        @keyframes floatLogo {
+            0%,100% { transform: translateY(0px) scale(1); }
+            50%     { transform: translateY(-10px) scale(1.02); }
+        }
+        @keyframes obOrbDrift1 {
+            0%,100% { transform: translate(0,0) scale(1); }
+            50%     { transform: translate(5%,8%) scale(1.1); }
+        }
+        @keyframes obOrbDrift2 {
+            0%,100% { transform: translate(0,0) scale(1.05); }
+            50%     { transform: translate(-8%,-5%) scale(0.95); }
+        }
         #onboarding-overlay {
             position: fixed; inset: 0; z-index: 9999999;
-            background: #000000;
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(29,185,84,0.13) 0%, transparent 55%),
+                radial-gradient(ellipse at 70% 80%, rgba(0,210,255,0.09) 0%, transparent 55%),
+                #04060c;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             font-family: 'Inter', sans-serif;
             overflow: hidden;
-            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: opacity 0.9s cubic-bezier(0.4,0,0.2,1);
         }
-
-        /* Windows 11 style ambient background blob */
-        .ambient-blob {
-            position: absolute;
-            width: 800px; height: 800px;
-            background: radial-gradient(circle, rgba(29,185,84,0.15) 0%, rgba(0,0,0,0) 70%);
-            border-radius: 50%;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            filter: blur(60px);
-            z-index: 0;
-            animation: pulseGlow 8s ease-in-out infinite;
+        #onboarding-overlay::before {
+            content: ''; position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px);
+            background-size: 32px 32px; pointer-events: none;
         }
-
+        .ob-blob {
+            position: absolute; border-radius: 50%;
+            filter: blur(80px); pointer-events: none; z-index: 0;
+        }
+        .ob-blob-green {
+            width: 700px; height: 700px;
+            background: radial-gradient(circle, rgba(29,185,84,0.18) 0%, transparent 65%);
+            top: -15%; left: -10%;
+            animation: obOrbDrift1 20s ease-in-out infinite;
+        }
+        .ob-blob-blue {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(56,189,248,0.1) 0%, transparent 65%);
+            bottom: -10%; right: -5%;
+            animation: obOrbDrift2 25s ease-in-out infinite;
+        }
         .onboarding-slide {
             position: absolute;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center;
-            opacity: 0; pointer-events: none;
-            z-index: 1;
-            width: 100%; max-width: 600px; padding: 40px;
+            text-align: center; opacity: 0; pointer-events: none;
+            z-index: 1; width: 100%; max-width: 640px; padding: 48px 40px 90px;
         }
-
         .onboarding-slide.active {
             opacity: 1; pointer-events: auto;
-            animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: obFadeUp 0.9s cubic-bezier(0.16,1,0.3,1) forwards;
         }
         .onboarding-slide.exit {
-            animation: fadeOut 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: obFadeOut 0.55s cubic-bezier(0.4,0,0.2,1) forwards;
         }
-
-        .ob-icon {
-            width: 120px; height: 120px;
-            margin-bottom: 40px;
-            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
-            border-radius: 30px;
-        }
-
-        .ob-title {
-            color: #ffffff;
-            font-size: 42px; font-weight: 700; letter-spacing: -1px;
-            margin: 0 0 20px 0;
-            line-height: 1.2;
-        }
-
-        .ob-text {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 18px; font-weight: 400; line-height: 1.6;
-            margin: 0 0 50px 0;
-            max-width: 480px;
-        }
-
-        .ob-btn {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 16px 48px;
-            border-radius: 100px;
-            font-size: 16px; font-weight: 600;
-            cursor: pointer;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-        }
-        .ob-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
-        }
-
-        .ob-btn-primary {
-            background: #1db954;
-            color: #000;
-            border: none;
-        }
-        .ob-btn-primary:hover {
-            background: #1ed760;
-            box-shadow: 0 10px 30px rgba(29, 185, 84, 0.4);
-        }
-
-        .feature-grid {
-            display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; text-align: left;
-            margin-bottom: 40px;
-        }
-        .feature-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 24px; border-radius: 20px;
-            display: flex; align-items: center; gap: 20px;
-            backdrop-filter: blur(10px);
-            transition: transform 0.3s ease;
-        }
-        .feature-item:hover { transform: translateX(10px); background: rgba(255, 255, 255, 0.06); }
-        .feature-icon {
-            width: 48px; height: 48px; border-radius: 14px;
-            background: rgba(29, 185, 84, 0.2);
-            color: #1db954;
+        .ob-logo-wrap {
+            width: 128px; height: 128px; border-radius: 34px;
+            background: rgba(255,255,255,0.04);
+            border: 1.5px solid rgba(255,255,255,0.14);
+            box-shadow: 0 0 60px rgba(29,185,84,0.25), 0 30px 60px rgba(0,0,0,0.6);
             display: flex; align-items: center; justify-content: center;
-            font-size: 20px; flex-shrink: 0;
+            margin-bottom: 40px; overflow: hidden;
+            animation: floatLogo 5s ease-in-out infinite, pulseGlow 5s ease-in-out infinite;
         }
+        .ob-logo-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 32px; }
+        .ob-badge {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: rgba(29,185,84,0.12); border: 1px solid rgba(29,185,84,0.38);
+            padding: 6px 16px; border-radius: 100px;
+            font-size: 12px; font-weight: 600; letter-spacing: 1px;
+            color: #1ed760; text-transform: uppercase; margin-bottom: 22px;
+        }
+        .ob-title {
+            color: #ffffff; font-size: 48px; font-weight: 700; letter-spacing: -1.5px;
+            margin: 0 0 18px; line-height: 1.15;
+        }
+        .ob-title span { color: #1ed760; }
+        .ob-text {
+            color: rgba(255,255,255,0.62); font-size: 17px; line-height: 1.7;
+            margin: 0 0 48px; max-width: 500px;
+        }
+        .ob-features { display: flex; flex-direction: column; gap: 14px; width: 100%; margin-bottom: 44px; }
+        .ob-feat {
+            display: flex; align-items: center; gap: 20px;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px; padding: 20px 22px; text-align: left;
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+        .ob-feat:hover { transform: translateX(8px); background: rgba(255,255,255,0.06); }
+        .ob-feat-icon {
+            width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+        .ob-feat-icon.green { background: rgba(29,185,84,0.15); color: #1ed760; }
+        .ob-feat-icon.blue  { background: rgba(56,189,248,0.15); color: #38bdf8; }
+        .ob-feat-icon.purple{ background: rgba(139,92,246,0.15); color: #a78bfa; }
+        .ob-feat-title { color: #fff; font-size: 16px; font-weight: 600; margin-bottom: 3px; }
+        .ob-feat-sub   { color: rgba(255,255,255,0.48); font-size: 13px; line-height: 1.5; }
+        .ob-highlights { display: flex; gap: 14px; width: 100%; margin-bottom: 44px; }
+        .ob-hl {
+            flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 18px; padding: 22px 12px; text-align: center; transition: transform 0.3s ease;
+        }
+        .ob-hl:hover { transform: translateY(-6px); }
+        .ob-hl i { font-size: 26px; margin-bottom: 10px; display: block; }
+        .ob-hl-label { color: #fff; font-size: 14px; font-weight: 600; }
+        .ob-hl-sub   { color: rgba(255,255,255,0.45); font-size: 12px; margin-top: 4px; }
+        .ob-btn {
+            background: rgba(255,255,255,0.08); color: white;
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 15px 48px; border-radius: 100px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s ease; font-family: 'Inter', sans-serif;
+        }
+        .ob-btn:hover { background: rgba(255,255,255,0.16); transform: scale(1.04); }
+        .ob-btn-primary {
+            background: linear-gradient(135deg, #1ed760, #1db954);
+            color: #040a05; border: none; box-shadow: 0 8px 28px rgba(29,185,84,0.4);
+        }
+        .ob-btn-primary:hover { box-shadow: 0 12px 36px rgba(29,185,84,0.6); filter: brightness(1.08); }
+        #ob-dots {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; z-index: 5;
+        }
+        .ob-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            transition: all 0.4s cubic-bezier(0.16,1,0.3,1); cursor: pointer;
+        }
+        .ob-dot.active { background: #1ed760; width: 26px; border-radius: 4px; }
+        #ob-skip {
+            position: absolute; top: 32px; right: 36px; z-index: 10;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.5); font-size: 13px; font-weight: 500;
+            padding: 8px 18px; border-radius: 20px; cursor: pointer;
+            transition: all 0.25s ease; font-family: 'Inter', sans-serif;
+        }
+        #ob-skip:hover { color: white; background: rgba(255,255,255,0.12); }
     </style>
 
     <div id="onboarding-overlay" style="display: none;">
-        <div class="ambient-blob"></div>
+        <div class="ob-blob ob-blob-green"></div>
+        <div class="ob-blob ob-blob-blue"></div>
+        <button id="ob-skip" onclick="finishOnboarding()">Lewati</button>
 
-        <!-- Slide 1: Welcome -->
+        <!-- Slide 1: Sambutan -->
         <div class="onboarding-slide active" id="ob-slide-1">
-            <img src="/static/icon.png" class="ob-icon">
-            <h1 class="ob-title">Just a moment...</h1>
-            <p class="ob-text">We're getting things ready for you. Experience music like never before with the completely redesigned IceBeats Desktop.</p>
-            <button class="ob-btn" onclick="nextSlide(2)">Next</button>
+            <div class="ob-logo-wrap"><img src="/static/icon.png" alt="IceBeats"></div>
+            <div class="ob-badge"><i class="fas fa-star"></i>&nbsp; IceBeats Desktop</div>
+            <h1 class="ob-title">Selamat Datang di<br><span>IceBeats</span></h1>
+            <p class="ob-text">Dengarkan musik favoritmu tanpa batas, bebas iklan, dengan kualitas audio terbaik langsung dari desktop kamu.</p>
+            <button class="ob-btn ob-btn-primary" onclick="nextSlide(2)">Lanjutkan &nbsp;<i class="fas fa-arrow-right"></i></button>
         </div>
 
-        <!-- Slide 2: Features -->
+        <!-- Slide 2: Fitur Unggulan -->
         <div class="onboarding-slide" id="ob-slide-2">
-            <h1 class="ob-title" style="font-size: 36px; margin-bottom: 40px;">Everything you love. Every device.</h1>
-            
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <div class="feature-icon"><i class="fas fa-cloud"></i></div>
+            <h1 class="ob-title" style="font-size:38px; margin-bottom:36px;">Satu App,<br>Semua yang Kamu Butuh</h1>
+            <div class="ob-features">
+                <div class="ob-feat">
+                    <div class="ob-feat-icon green"><i class="fas fa-sync-alt"></i></div>
                     <div>
-                        <div style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 4px;">True Cloud Sync</div>
-                        <div style="color: rgba(255,255,255,0.5); font-size: 14px;">Your playlists, history, and favorites automatically sync between Windows, Linux, and Android.</div>
+                        <div class="ob-feat-title">Sinkronisasi Cloud Otomatis</div>
+                        <div class="ob-feat-sub">Playlist, favorit &amp; riwayat sinkron ke HP dan semua perangkatmu secara real-time.</div>
                     </div>
                 </div>
-                <div class="feature-item">
-                    <div class="feature-icon"><i class="fas fa-gem"></i></div>
+                <div class="ob-feat">
+                    <div class="ob-feat-icon blue"><i class="fas fa-layer-group"></i></div>
                     <div>
-                        <div style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 4px;">Premium Liquid UI</div>
-                        <div style="color: rgba(255,255,255,0.5); font-size: 14px;">Enjoy dynamic islands, live lyrics, and hardware-accelerated fluid glassmorphism.</div>
+                        <div class="ob-feat-title">Dynamic Island</div>
+                        <div class="ob-feat-sub">Kontrol musik tetap tampil mengambang di layar meski kamu buka aplikasi lain.</div>
                     </div>
                 </div>
-                <div class="feature-item">
-                    <div class="feature-icon"><i class="fas fa-ban"></i></div>
+                <div class="ob-feat">
+                    <div class="ob-feat-icon purple"><i class="fas fa-microphone-alt"></i></div>
                     <div>
-                        <div style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 4px;">100% Ad-Free</div>
-                        <div style="color: rgba(255,255,255,0.5); font-size: 14px;">No interruptions. Just high-quality audio streaming, completely free forever.</div>
+                        <div class="ob-feat-title">Lirik Real-Time</div>
+                        <div class="ob-feat-sub">Ikut sing-along dengan lirik yang sinkron sempurna, gratis tanpa iklan selamanya.</div>
                     </div>
                 </div>
             </div>
+            <button class="ob-btn ob-btn-primary" onclick="nextSlide(3)">Lanjutkan &nbsp;<i class="fas fa-arrow-right"></i></button>
+        </div>
 
-            <button class="ob-btn ob-btn-primary" onclick="finishOnboarding()">Get Started</button>
+        <!-- Slide 3: Siap Masuk -->
+        <div class="onboarding-slide" id="ob-slide-3">
+            <div class="ob-logo-wrap" style="width:96px;height:96px;border-radius:26px;margin-bottom:32px;animation-duration:4s;">
+                <img src="/static/icon.png" alt="IceBeats">
+            </div>
+            <h1 class="ob-title" style="font-size:40px; margin-bottom:14px;">Semua Siap!</h1>
+            <p class="ob-text" style="margin-bottom:36px;">Masuk dengan akun Google untuk sinkronisasi penuh, atau lanjutkan sebagai tamu untuk langsung menikmati musik.</p>
+            <div class="ob-highlights">
+                <div class="ob-hl">
+                    <i class="fas fa-infinity" style="color:#1ed760;"></i>
+                    <div class="ob-hl-label">Tak Terbatas</div>
+                    <div class="ob-hl-sub">Streaming gratis</div>
+                </div>
+                <div class="ob-hl">
+                    <i class="fas fa-ban" style="color:#38bdf8;"></i>
+                    <div class="ob-hl-label">0 Iklan</div>
+                    <div class="ob-hl-sub">Selamanya gratis</div>
+                </div>
+                <div class="ob-hl">
+                    <i class="fas fa-shield-alt" style="color:#a78bfa;"></i>
+                    <div class="ob-hl-label">Aman &amp; Privat</div>
+                    <div class="ob-hl-sub">Data kamu terlindungi</div>
+                </div>
+            </div>
+            <button class="ob-btn ob-btn-primary" onclick="finishOnboarding()"><i class="fas fa-sign-in-alt"></i> &nbsp;Masuk Sekarang</button>
+        </div>
+
+        <!-- Dot Indicators -->
+        <div id="ob-dots">
+            <div class="ob-dot active" onclick="goSlide(1)"></div>
+            <div class="ob-dot" onclick="goSlide(2)"></div>
+            <div class="ob-dot" onclick="goSlide(3)"></div>
         </div>
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const hasOnboarded = localStorage.getItem('onboarded');
-            const obOverlay = document.getElementById('onboarding-overlay');
-            const authOverlay = document.getElementById('auth-overlay');
-            
+        (function() {
+            var hasOnboarded = localStorage.getItem('icebeats_onboarded_v2');
+            var obOverlay = document.getElementById('onboarding-overlay');
+            var authOverlay = document.getElementById('auth-overlay');
             if (!hasOnboarded) {
-                // Show onboarding, hide auth
-                obOverlay.style.display = 'flex';
+                if (obOverlay) obOverlay.style.display = 'flex';
                 if (authOverlay) authOverlay.style.display = 'none';
             }
-        });
+        })();
 
-        window.nextSlide = function(slideNum) {
-            const current = document.querySelector('.onboarding-slide.active');
-            if (current) {
-                current.classList.remove('active');
-                current.classList.add('exit');
-            }
-            
-            setTimeout(() => {
-                const next = document.getElementById('ob-slide-' + slideNum);
-                if (next) {
-                    next.classList.remove('exit');
-                    next.classList.add('active');
-                }
-            }, 300); // Wait for exit animation
+        var _obCurrent = 1;
+        window.goSlide = function(num) {
+            if (num === _obCurrent) return;
+            var cur = document.getElementById('ob-slide-' + _obCurrent);
+            if (cur) { cur.classList.remove('active'); cur.classList.add('exit'); }
+            _obCurrent = num;
+            document.querySelectorAll('.ob-dot').forEach(function(d, i) {
+                d.classList.toggle('active', i + 1 === num);
+            });
+            setTimeout(function() {
+                var next = document.getElementById('ob-slide-' + num);
+                if (next) { next.classList.remove('exit'); next.classList.add('active'); }
+            }, 280);
         };
-
+        window.nextSlide = function(num) { window.goSlide(num); };
         window.finishOnboarding = function() {
-            const obOverlay = document.getElementById('onboarding-overlay');
-            const authOverlay = document.getElementById('auth-overlay');
-            
+            var obOverlay = document.getElementById('onboarding-overlay');
+            var authOverlay = document.getElementById('auth-overlay');
             obOverlay.style.opacity = '0';
-            localStorage.setItem('onboarded', 'true');
-            
-            setTimeout(() => {
+            localStorage.setItem('icebeats_onboarded_v2', 'true');
+            setTimeout(function() {
                 obOverlay.style.display = 'none';
-                
-                // Show login screen if they aren't logged in
-                const authState = localStorage.getItem('auth_state');
+                var authState = localStorage.getItem('auth_state');
                 if (authState !== 'guest' && authState !== 'logged_in') {
                     if (authOverlay) {
                         authOverlay.style.opacity = '0';
                         authOverlay.style.display = 'flex';
-                        // fade in
-                        setTimeout(() => {
+                        setTimeout(function() {
                             authOverlay.style.transition = 'opacity 0.8s ease';
                             authOverlay.style.opacity = '1';
                         }, 50);

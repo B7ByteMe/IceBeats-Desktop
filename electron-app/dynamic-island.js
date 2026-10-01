@@ -48,6 +48,19 @@ container.addEventListener('click', (e) => {
     }
 });
 
+// Double-click anywhere on island (when expanded) restores the main window
+container.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.control-btn')) return;
+    window.electronAPI?.sendAction('restore-window');
+});
+
+// Click on track-info area (title/artist) when expanded also restores window
+document.querySelector('.track-info')?.addEventListener('click', (e) => {
+    if (isExpanded) {
+        window.electronAPI?.sendAction('restore-window');
+    }
+});
+
 if (window.electronAPI) {
     if (window.electronAPI.onDoExpand) {
         window.electronAPI.onDoExpand(() => {
@@ -92,6 +105,10 @@ document.getElementById('btn-repeat')?.addEventListener('click', () => {
     window.electronAPI?.sendAction('repeat');
     resetTimer();
 });
+document.getElementById('btn-open-app')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.electronAPI?.sendAction('restore-window');
+});
 
 const progressBarBg = document.querySelector('.progress-bar-bg');
 progressBarBg?.addEventListener('click', (e) => {
@@ -108,15 +125,8 @@ if (window.electronAPI && window.electronAPI.onTrackUpdated) {
             playIcon.className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
             
             if (!isPlaying) {
-                // If paused and minimized, delay hiding so it doesn't suddenly disappear
-                if (!isExpanded) {
-                    if (pauseHideTimeout) clearTimeout(pauseHideTimeout);
-                    pauseHideTimeout = setTimeout(() => {
-                        if (!isPlaying && !isExpanded) {
-                            container.className = 'island hidden';
-                        }
-                    }, 8000);
-                }
+                // Island stays visible when paused — never auto-hide
+                if (pauseHideTimeout) clearTimeout(pauseHideTimeout);
             } else {
                 if (pauseHideTimeout) clearTimeout(pauseHideTimeout);
                 if (container.classList.contains('hidden')) {

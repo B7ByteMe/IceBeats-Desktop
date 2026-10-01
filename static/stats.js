@@ -30,7 +30,9 @@
         modal.className = 'stats-modal-overlay';
         modal.innerHTML = `
             <div class="stats-modal welcome-modal">
-                <div class="welcome-icon"><i class="fas fa-music"></i></div>
+                <div class="welcome-icon">
+                    <img src="/static/icon.png" alt="IceBeats" style="width: 64px; height: 64px; border-radius: 18px; box-shadow: 0 8px 25px rgba(0,0,0,0.5), 0 0 20px rgba(30,215,96,0.3); border: 1.5px solid rgba(255,255,255,0.18); object-fit: cover;">
+                </div>
                 <h2>Welcome to IceBeats</h2>
                 <p>Enter your nickname to join the global stats leaderboard and sync with the Android app!</p>
                 <input type="text" id="welcomeNameInput" class="stats-input" placeholder="Your music nickname..." maxlength="25">

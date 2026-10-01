@@ -183,79 +183,155 @@ window.initQrLogin = async function() {
 
 /**
  * Restore Favorites & Playlists from Supabase (identical database logic to APK)
+ * Synchronizes seamlessly with the IceBeats Android App
  */
 window.restoreFromSupabase = async function(userId) {
     if (!userId) return;
     try {
         const headers = getSupabaseHeaders();
+        const email = localStorage.getItem('auth_email') || '';
 
-        // 1. Fetch user_favorites
-        const favRes = await fetch(`${SUPABASE_URL}/rest/v1/user_favorites?user_id=eq.${userId}&select=*`, {
-            headers: { ...headers, 'Cache-Control': 'no-cache' }
-        });
-        if (favRes.ok) {
-            const favRows = await favRes.json();
-            if (Array.isArray(favRows) && favRows.length > 0) {
-                const mappedFavs = favRows.map(row => ({
-                    id: row.song_id,
-                    name: row.title,
-                    artist: row.artist_name || 'Unknown Artist',
-                    album: row.album_name || '',
-                    image: row.thumbnail_url || '',
-                    duration: row.duration || 0
-                }));
-                localStorage.setItem('favoriteSongs', JSON.stringify(mappedFavs));
+        // 1. Fetch user_favorites (query by userId and email to guarantee Android compatibility)
+        let favRows = [];
+        try {
+            const favRes = await fetch(`${SUPABASE_URL}/rest/v1/user_favorites?user_id=eq.${encodeURIComponent(userId)}&select=*`, {
+                headers: { ...headers, 'Cache-Control': 'no-cache' }
+            });
+            if (favRes.ok) {
+                const resJson = await favRes.json();
+                if (Array.isArray(resJson)) favRows.push(...resJson);
+            }
+        } catch(e) {}
+
+        if (email && email !== userId) {
+            try {
+                const favEmailRes = await fetch(`${SUPABASE_URL}/rest/v1/user_favorites?user_id=eq.${encodeURIComponent(email)}&select=*`, {
+                    headers: { ...headers, 'Cache-Control': 'no-cache' }
+                });
+                if (favEmailRes.ok) {
+                    const resJson = await favEmailRes.json();
+                    if (Array.isArray(resJson)) favRows.push(...resJson);
+                }
+            } catch(e) {}
+        }
+
+        if (favRows.length > 0) {
+            const existingFavs = JSON.parse(localStorage.getItem('favoriteSongs') || '[]');
+            const songMap = new Map();
+            existingFavs.forEach(s => { if (s && s.id) songMap.set(String(s.id), s); });
+
+            favRows.forEach(row => {
+                if (row && row.song_id) {
+                    songMap.set(String(row.song_id), {
+                        id: String(row.song_id),
+                        name: row.title || 'Song',
+                        artist: row.artist_name || 'Unknown Artist',
+                        album: row.album_name || '',
+                        image: row.thumbnail_url || '',
+                        duration: row.duration || 0
+                    });
+                }
+            });
+
+            const mergedFavs = Array.from(songMap.values());
+            localStorage.setItem('favoriteSongs', JSON.stringify(mergedFavs));
+            if (typeof window.favoriteSongs !== 'undefined') {
+                window.favoriteSongs = mergedFavs;
             }
         }
 
         // 2. Fetch user_playlists & user_playlist_songs
-        const plRes = await fetch(`${SUPABASE_URL}/rest/v1/user_playlists?user_id=eq.${userId}&select=*`, {
-            headers: { ...headers, 'Cache-Control': 'no-cache' }
-        });
-        const plSongsRes = await fetch(`${SUPABASE_URL}/rest/v1/user_playlist_songs?user_id=eq.${userId}&select=*&order=position.asc`, {
-            headers: { ...headers, 'Cache-Control': 'no-cache' }
-        });
-
-        if (plRes.ok && plSongsRes.ok) {
-            const playlists = await plRes.json();
-            const allSongs = await plSongsRes.json();
-
-            if (Array.isArray(playlists) && playlists.length > 0) {
-                const structuredPlaylists = playlists.map(pl => {
-                    const songsForPl = allSongs.filter(s => s.playlist_id === pl.playlist_id).map(s => ({
-                        id: s.song_id,
-                        name: s.title,
-                        artist: s.artist_name || 'Unknown Artist',
-                        album: s.album_name || '',
-                        image: s.thumbnail_url || '',
-                        duration: s.duration || 0
-                    }));
-                    return {
-                        id: pl.playlist_id,
-                        name: pl.name,
-                        songs: songsForPl
-                    };
-                });
-                localStorage.setItem('user_playlists', JSON.stringify(structuredPlaylists));
+        let playlists = [];
+        let allSongs = [];
+        try {
+            const plRes = await fetch(`${SUPABASE_URL}/rest/v1/user_playlists?user_id=eq.${encodeURIComponent(userId)}&select=*`, {
+                headers: { ...headers, 'Cache-Control': 'no-cache' }
+            });
+            if (plRes.ok) {
+                const r = await plRes.json();
+                if (Array.isArray(r)) playlists.push(...r);
             }
+
+            const plSongsRes = await fetch(`${SUPABASE_URL}/rest/v1/user_playlist_songs?user_id=eq.${encodeURIComponent(userId)}&select=*&order=position.asc`, {
+                headers: { ...headers, 'Cache-Control': 'no-cache' }
+            });
+            if (plSongsRes.ok) {
+                const r = await plSongsRes.json();
+                if (Array.isArray(r)) allSongs.push(...r);
+            }
+        } catch(e) {}
+
+        if (email && email !== userId) {
+            try {
+                const plEmailRes = await fetch(`${SUPABASE_URL}/rest/v1/user_playlists?user_id=eq.${encodeURIComponent(email)}&select=*`, {
+                    headers: { ...headers, 'Cache-Control': 'no-cache' }
+                });
+                if (plEmailRes.ok) {
+                    const r = await plEmailRes.json();
+                    if (Array.isArray(r)) playlists.push(...r);
+                }
+
+                const plSongsEmailRes = await fetch(`${SUPABASE_URL}/rest/v1/user_playlist_songs?user_id=eq.${encodeURIComponent(email)}&select=*&order=position.asc`, {
+                    headers: { ...headers, 'Cache-Control': 'no-cache' }
+                });
+                if (plSongsEmailRes.ok) {
+                    const r = await plSongsEmailRes.json();
+                    if (Array.isArray(r)) allSongs.push(...r);
+                }
+            } catch(e) {}
         }
 
-        // 3. Check for full backup file in storage as supplement
-        const backupRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/backups/icebeats_backup_${userId}.backup?_t=${Date.now()}`, {
-            headers: { 'Cache-Control': 'no-cache' }
-        });
-        if (backupRes.ok) {
-            const backupData = await backupRes.json();
-            if (backupData.saved_albums) localStorage.setItem('saved_albums', backupData.saved_albums);
-            if (backupData.subscribedArtists) localStorage.setItem('subscribedArtists', backupData.subscribedArtists);
-            if (backupData.searchHistory) localStorage.setItem('searchHistory', backupData.searchHistory);
-            if (backupData.playedArtists) localStorage.setItem('playedArtists', backupData.playedArtists);
-            if (backupData.lastPlayedAlbum) localStorage.setItem('lastPlayedAlbum', backupData.lastPlayedAlbum);
+        if (playlists.length > 0) {
+            const existingPlaylists = JSON.parse(localStorage.getItem('user_playlists') || '[]');
+            const plMap = new Map();
+            existingPlaylists.forEach(p => { if (p && p.id) plMap.set(String(p.id), p); });
+
+            playlists.forEach(pl => {
+                const pid = String(pl.playlist_id);
+                const songsForPl = allSongs.filter(s => String(s.playlist_id) === pid).map(s => ({
+                    id: String(s.song_id),
+                    name: s.title || 'Song',
+                    artist: s.artist_name || 'Unknown Artist',
+                    album: s.album_name || '',
+                    image: s.thumbnail_url || '',
+                    duration: s.duration || 0
+                }));
+                plMap.set(pid, {
+                    id: pid,
+                    name: pl.name,
+                    songs: songsForPl
+                });
+            });
+
+            localStorage.setItem('user_playlists', JSON.stringify(Array.from(plMap.values())));
         }
 
-        console.log('Successfully restored library from Supabase Cloud!');
+        // 3. Check for full backup file in Supabase storage & local backend proxy
+        const checkBackupFile = async (url) => {
+            try {
+                const res = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } });
+                if (res.ok) {
+                    const backupData = await res.json();
+                    if (backupData) {
+                        if (backupData.saved_albums) localStorage.setItem('saved_albums', typeof backupData.saved_albums === 'string' ? backupData.saved_albums : JSON.stringify(backupData.saved_albums));
+                        if (backupData.subscribedArtists) localStorage.setItem('subscribedArtists', typeof backupData.subscribedArtists === 'string' ? backupData.subscribedArtists : JSON.stringify(backupData.subscribedArtists));
+                        if (backupData.searchHistory) localStorage.setItem('searchHistory', typeof backupData.searchHistory === 'string' ? backupData.searchHistory : JSON.stringify(backupData.searchHistory));
+                        if (backupData.playedArtists) localStorage.setItem('playedArtists', typeof backupData.playedArtists === 'string' ? backupData.playedArtists : JSON.stringify(backupData.playedArtists));
+                        if (backupData.lastPlayedAlbum) localStorage.setItem('lastPlayedAlbum', typeof backupData.lastPlayedAlbum === 'string' ? backupData.lastPlayedAlbum : JSON.stringify(backupData.lastPlayedAlbum));
+                    }
+                }
+            } catch(e) {}
+        };
+
+        await checkBackupFile(`${SUPABASE_URL}/storage/v1/object/public/backups/icebeats_backup_${userId}.backup?_t=${Date.now()}`);
+        if (email) {
+            await checkBackupFile(`${SUPABASE_URL}/storage/v1/object/public/backups/icebeats_backup_${email}.backup?_t=${Date.now()}`);
+            await checkBackupFile(`/api/auth/restore?email=${encodeURIComponent(email)}`);
+        }
+
+        console.log('[Supabase Sync] Successfully synchronized library with Android and Cloud!');
     } catch (err) {
-        console.error('Failed to restore from Supabase:', err);
+        console.error('[Supabase Sync] Failed to synchronize from Supabase:', err);
     }
 };
 
@@ -263,11 +339,13 @@ window.restoreFromCloud = window.restoreFromSupabase;
 
 /**
  * Backup Favorites & Playlists to Supabase Cloud
+ * Syncs seamlessly back to the Android APK
  */
 window.autoBackup = async function() {
     if (window.isGuestMode) return;
     const userId = localStorage.getItem('icebeats_user_id') || localStorage.getItem('airbeats_user_id');
     if (!userId) return;
+    const email = localStorage.getItem('auth_email') || '';
 
     try {
         const headers = getSupabaseHeaders();
@@ -278,7 +356,7 @@ window.autoBackup = async function() {
         if (Array.isArray(favorites) && favorites.length > 0) {
             const favPayload = favorites.map(f => ({
                 user_id: userId,
-                song_id: f.id,
+                song_id: String(f.id),
                 title: f.name || 'Song',
                 artist_name: f.artist || 'Unknown Artist',
                 album_name: f.album || '',
@@ -303,7 +381,7 @@ window.autoBackup = async function() {
             playlists.forEach(pl => {
                 plPayload.push({
                     user_id: userId,
-                    playlist_id: pl.id,
+                    playlist_id: String(pl.id),
                     name: pl.name,
                     song_count: pl.songs ? pl.songs.length : 0
                 });
@@ -312,8 +390,8 @@ window.autoBackup = async function() {
                     pl.songs.forEach((s, idx) => {
                         plSongsPayload.push({
                             user_id: userId,
-                            playlist_id: pl.id,
-                            song_id: s.id,
+                            playlist_id: String(pl.id),
+                            song_id: String(s.id),
                             title: s.name || 'Song',
                             artist_name: s.artist || 'Unknown Artist',
                             album_name: s.album || '',
@@ -365,9 +443,18 @@ window.autoBackup = async function() {
             body: JSON.stringify(fullBackup)
         }).catch(() => {});
 
-        console.log('Supabase autoBackup complete');
+        if (email) {
+            // Also sync to backend proxy endpoint
+            fetch(`/api/auth/backup?email=${encodeURIComponent(email)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(fullBackup)
+            }).catch(() => {});
+        }
+
+        console.log('[Supabase Sync] autoBackup complete (synced to cloud)');
     } catch (e) {
-        console.error('Supabase autoBackup error', e);
+        console.error('[Supabase Sync] autoBackup error', e);
     }
 };
 
@@ -384,6 +471,12 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (authState === 'logged_in') {
         window.isGuestMode = false;
         if (overlay) overlay.style.display = 'none';
+        
+        // Auto-sync from Supabase / Android in background on every app startup!
+        const uid = localStorage.getItem('icebeats_user_id') || localStorage.getItem('airbeats_user_id');
+        if (uid && window.restoreFromSupabase) {
+            window.restoreFromSupabase(uid).catch(() => {});
+        }
     } else {
         if (overlay) {
             overlay.style.display = 'flex';
@@ -400,77 +493,76 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Google Sign-In setup
-    let tokenClient;
-    function setupGoogleClient() {
-        if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: 'email profile openid',
-                callback: async (tokenResponse) => {
-                    if (tokenResponse && tokenResponse.access_token) {
-                        try {
-                            btnGoogle.innerText = "Connecting...";
-                            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                            });
-                            const userInfo = await res.json();
-                            
-                            if (userInfo.email) {
-                                if (qrPollInterval) clearInterval(qrPollInterval);
-                                const uid = userInfo.sub || 'g_' + userInfo.email.replace(/[^a-zA-Z0-9]/g, '_');
-                                const name = userInfo.name || userInfo.email.split('@')[0];
-                                const avatar = userInfo.picture || '';
-
-                                localStorage.setItem('auth_state', 'logged_in');
-                                localStorage.setItem('auth_email', userInfo.email);
-                                localStorage.setItem('icebeats_user_id', uid);
-                                localStorage.setItem('airbeats_user_id', uid);
-                                localStorage.setItem('icebeats_user_name', name);
-                                localStorage.setItem('airbeats_user_name', name);
-                                if (avatar) {
-                                    localStorage.setItem('icebeats_user_avatar', avatar);
-                                    localStorage.setItem('airbeats_user_avatar', avatar);
-                                }
-                                window.isGuestMode = false;
-
-                                btnGoogle.innerText = "Restoring library...";
-                                await window.restoreFromSupabase(uid);
-
-                                if (overlay) overlay.style.display = 'none';
-                                window.location.reload();
-                            }
-                        } catch (err) {
-                            console.error('Google profile fetch failed', err);
-                            if (errorDiv) {
-                                errorDiv.innerText = "Failed to fetch Google profile.";
-                                errorDiv.style.display = 'block';
-                            }
-                            btnGoogle.innerText = "Continue with Google";
-                            btnGoogle.disabled = false;
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    setupGoogleClient();
+    // Google Sign-In setup via Default Browser (Chrome)
+    let googleBrowserPollInterval = null;
 
     if (btnGoogle) {
         btnGoogle.addEventListener('click', () => {
-            if (!tokenClient) {
-                setupGoogleClient();
+            const loginUrl = 'http://127.0.0.1:8000/auth/google/login';
+            
+            // Open in external default browser (Chrome)
+            if (window.electronAPI && window.electronAPI.openExternal) {
+                window.electronAPI.openExternal(loginUrl);
+            } else {
+                window.open(loginUrl, '_blank');
             }
-            if (!tokenClient) {
-                if (errorDiv) {
-                    errorDiv.innerText = "Google Services are still loading or unavailable. Please try QR Code.";
-                    errorDiv.style.display = 'block';
+
+            btnGoogle.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menunggu login di browser...';
+            btnGoogle.disabled = true;
+            if (errorDiv) errorDiv.style.display = 'none';
+
+            if (googleBrowserPollInterval) clearInterval(googleBrowserPollInterval);
+
+            // Poll local backend for successful authentication session
+            googleBrowserPollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/auth/session');
+                    const json = await res.json();
+                    
+                    if (json && json.logged_in && json.session) {
+                        clearInterval(googleBrowserPollInterval);
+                        googleBrowserPollInterval = null;
+
+                        const s = json.session;
+                        const uid = s.uid || 'g_' + s.email.replace(/[^a-zA-Z0-9]/g, '_');
+                        const name = s.name || s.email.split('@')[0];
+                        const avatar = s.avatar || '';
+
+                        localStorage.setItem('auth_state', 'logged_in');
+                        localStorage.setItem('auth_email', s.email);
+                        localStorage.setItem('icebeats_user_id', uid);
+                        localStorage.setItem('airbeats_user_id', uid);
+                        localStorage.setItem('icebeats_user_name', name);
+                        localStorage.setItem('airbeats_user_name', name);
+                        if (avatar) {
+                            localStorage.setItem('icebeats_user_avatar', avatar);
+                            localStorage.setItem('airbeats_user_avatar', avatar);
+                        }
+                        if (s.access_token) {
+                            localStorage.setItem('supabase_access_token', s.access_token);
+                        }
+                        window.isGuestMode = false;
+
+                        btnGoogle.innerHTML = '<i class="fas fa-check"></i> Berhasil masuk!';
+                        await window.restoreFromSupabase(uid);
+
+                        if (overlay) overlay.style.display = 'none';
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    console.error('Polling auth session error', e);
                 }
-                return;
-            }
-            btnGoogle.innerText = "Waiting for Google...";
-            tokenClient.requestAccessToken();
+            }, 1000);
+
+            // Timeout after 3 minutes if user didn't complete login
+            setTimeout(() => {
+                if (googleBrowserPollInterval) {
+                    clearInterval(googleBrowserPollInterval);
+                    googleBrowserPollInterval = null;
+                    btnGoogle.innerHTML = '<img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" style="width: 18px;"> Continue with Google';
+                    btnGoogle.disabled = false;
+                }
+            }, 180000);
         });
     }
 });

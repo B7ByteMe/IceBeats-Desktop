@@ -65,35 +65,28 @@ window.setDynamicIsland = function(enabled) {
     if (window.electronAPI && window.electronAPI.toggleDynamicIsland) {
         window.electronAPI.toggleDynamicIsland(enabled);
         
-        // Force the island to show up immediately if there is a track playing
+        // Push the currently playing track to the island immediately if enabled
         if (enabled) {
             setTimeout(() => {
-                if (typeof currentTrack !== 'undefined' && currentTrack) {
-                    const isFav = favoriteSongs.some(s => s.id === currentTrack.id);
+                const track = (typeof window.getCurrentTrack === 'function' ? window.getCurrentTrack() : (currentQueue && currentQueue[currentIndex])) || null;
+                if (track) {
+                    const isFav = Array.isArray(favoriteSongs) && favoriteSongs.some(s => s.id === track.id);
+                    const artistName = track.artists?.primary?.[0]?.name || track.artist || track.subtitle || 'Unknown Artist';
+                    const trackImage = (typeof getHighestQualityImage === 'function' ? getHighestQualityImage(track.image) : '') || (typeof track.image === 'string' ? track.image : '') || '';
                     window.electronAPI.updateDynamicIsland({
                         type: 'track',
-                        title: currentTrack.name,
-                        artist: currentTrack.artist,
-                        image: currentTrack.image,
+                        title: track.name || track.title || 'Unknown Title',
+                        artist: artistName,
+                        image: trackImage,
                         isFav: isFav,
                         isRepeat: window.isRepeat || false
                     });
                     
-                    if (document.body.classList.contains('is-playing')) {
+                    if (document.body.classList.contains('is-playing') || (audio && !audio.paused)) {
                         window.electronAPI.updateDynamicIsland({ type: 'state', state: 'play' });
                     }
-                } else {
-                    // Send a dummy track to force it to show up so user knows it works
-                    window.electronAPI.updateDynamicIsland({
-                        type: 'track',
-                        title: 'IceBeats Desktop',
-                        artist: 'Ready to play',
-                        image: '',
-                        isFav: false,
-                        isRepeat: false
-                    });
                 }
-            }, 500);
+            }, 300);
         }
     }
     
@@ -115,7 +108,7 @@ window.setDynamicIsland = function(enabled) {
 if (localStorage.getItem('dynamic_island_enabled') === null) {
     localStorage.setItem('dynamic_island_enabled', 'true');
 }
-window.setDynamicIsland(localStorage.getItem('dynamic_island_enabled') === 'true');
+window.setDynamicIsland(localStorage.getItem('dynamic_island_enabled') !== 'false');
 
 window.showToast = function(message) {
     let toastContainer = document.getElementById('toast-container');
@@ -1300,12 +1293,14 @@ async function loadCurrentTrack() {
     
     // Update Dynamic Island
     if (window.electronAPI && window.electronAPI.updateDynamicIsland) {
-        const isFav = favoriteSongs.some(s => s.id === track.id);
+        const isFav = Array.isArray(favoriteSongs) && favoriteSongs.some(s => s.id === track.id);
+        const artistName = track.artists?.primary?.[0]?.name || track.artist || track.subtitle || 'Unknown Artist';
+        const trackImage = (typeof getHighestQualityImage === 'function' ? getHighestQualityImage(track.image) : '') || (typeof track.image === 'string' ? track.image : '') || '';
         window.electronAPI.updateDynamicIsland({
             type: 'track',
-            title: track.name,
-            artist: track.artists?.primary?.[0]?.name || 'Unknown Artist',
-            image: getHighestQualityImage(track.image),
+            title: track.name || track.title || 'Unknown Title',
+            artist: artistName,
+            image: trackImage,
             isFav: isFav,
             isRepeat: window.isRepeat || false
         });
@@ -2383,7 +2378,13 @@ async function renderSettingsAppearance() {
     setTimeout(() => {
         window.setTheme(localStorage.getItem('theme') || 'light');
         window.setWaveformAnimation(localStorage.getItem('wave_anim') === 'true');
-        window.setDynamicIsland(localStorage.getItem('dynamic_island_enabled') === 'true');
+        const islandEnabled = localStorage.getItem('dynamic_island_enabled') !== 'false';
+        const islandOnBtn = document.getElementById('btn-island-on');
+        const islandOffBtn = document.getElementById('btn-island-off');
+        if (islandOnBtn && islandOffBtn) {
+            islandOnBtn.style.border = islandEnabled ? '2px solid var(--accent)' : '2px solid transparent';
+            islandOffBtn.style.border = islandEnabled ? '2px solid transparent' : '2px solid var(--accent)';
+        }
     }, 50);
 }
 
@@ -2405,7 +2406,7 @@ window.setAccentColor = function(color) {
 }
 
 async function renderSettingsAbout() {
-    let currentVersion = 'v0.0.1';
+    let currentVersion = 'v0.0.2';
     if (window.electronAPI && window.electronAPI.getAppVersion) {
         try {
             const v = await window.electronAPI.getAppVersion();
@@ -2421,9 +2422,9 @@ async function renderSettingsAbout() {
         <!-- Logo -->
         <style>
             @keyframes logoPulse {
-                0% { transform: scale(1); box-shadow: 0 8px 25px rgba(0,0,0,0.3), 0 0 20px rgba(30,215,96,0.2); }
-                50% { transform: scale(1.05); box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 35px rgba(30,215,96,0.4); }
-                100% { transform: scale(1); box-shadow: 0 8px 25px rgba(0,0,0,0.3), 0 0 20px rgba(30,215,96,0.2); }
+                0% { transform: scale(1); box-shadow: 0 8px 25px rgba(0,0,0,0.1), 0 0 20px rgba(30,215,96,0.15); }
+                50% { transform: scale(1.04); box-shadow: 0 16px 35px rgba(0,0,0,0.15), 0 0 30px rgba(30,215,96,0.25); }
+                100% { transform: scale(1); box-shadow: 0 8px 25px rgba(0,0,0,0.1), 0 0 20px rgba(30,215,96,0.15); }
             }
             .about-link-card {
                 display: flex;
@@ -2437,11 +2438,22 @@ async function renderSettingsAbout() {
             }
             .about-link-card:hover {
                 transform: translateY(-3px);
-                filter: brightness(1.15);
-                box-shadow: 0 12px 25px rgba(0,0,0,0.25);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+            }
+            .about-link-title {
+                font-size: 15px;
+                color: var(--text-primary);
+                font-weight: 700;
+                line-height: 1.2;
+            }
+            .about-link-sub {
+                font-size: 12px;
+                color: var(--text-secondary);
+                margin-top: 3px;
+                line-height: 1.3;
             }
         </style>
-        <div style="width: 108px; height: 108px; border-radius: 28px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; margin-bottom: 22px; animation: logoPulse 3s infinite ease-in-out; overflow: hidden; padding: 4px;">
+        <div style="width: 108px; height: 108px; border-radius: 28px; background: var(--card-bg, #ffffff); border: 1.5px solid var(--border-color, rgba(0,0,0,0.1)); display: flex; align-items: center; justify-content: center; margin-bottom: 22px; animation: logoPulse 3s infinite ease-in-out; overflow: hidden; padding: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
             <img src="/static/icon.png" alt="IceBeats" style="width: 100%; height: 100%; border-radius: 24px; object-fit: cover;">
         </div>
 
@@ -2463,38 +2475,38 @@ async function renderSettingsAbout() {
         <!-- Action Links Grid -->
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; width: 90%; max-width: 520px; margin-bottom: 40px;">
             <!-- Komunitas WhatsApp -->
-            <a href="javascript:void(0)" onclick="if(window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal('https://whatsapp.com/channel/0029Vb8V2qh8V0tpL0VDky0M'); else window.open('https://whatsapp.com/channel/0029Vb8V2qh8V0tpL0VDky0M', '_blank');" class="about-link-card" style="background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.3); color: #25d366;">
-                <i class="fab fa-whatsapp" style="font-size: 24px;"></i>
+            <a href="javascript:void(0)" onclick="if(window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal('https://whatsapp.com/channel/0029Vb8V2qh8V0tpL0VDky0M'); else window.open('https://whatsapp.com/channel/0029Vb8V2qh8V0tpL0VDky0M', '_blank');" class="about-link-card" style="background: rgba(37, 211, 102, 0.08); border: 1.5px solid rgba(37, 211, 102, 0.28);">
+                <i class="fab fa-whatsapp" style="font-size: 24px; color: #16a34a;"></i>
                 <div style="text-align: left;">
-                    <div style="font-size: 15px; color: #ffffff; font-weight: 700;">Komunitas</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Saluran WhatsApp</div>
+                    <div class="about-link-title">Komunitas</div>
+                    <div class="about-link-sub">Saluran WhatsApp</div>
                 </div>
             </a>
 
             <!-- GitHub -->
-            <a href="javascript:void(0)" onclick="if(window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal('https://github.com/B7ByteMe/IceBeats-Desktop'); else window.open('https://github.com/B7ByteMe/IceBeats-Desktop', '_blank');" class="about-link-card" style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); color: #ffffff;">
-                <i class="fab fa-github" style="font-size: 24px;"></i>
+            <a href="javascript:void(0)" onclick="if(window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal('https://github.com/B7ByteMe/IceBeats-Desktop'); else window.open('https://github.com/B7ByteMe/IceBeats-Desktop', '_blank');" class="about-link-card" style="background: var(--search-bg); border: 1.5px solid var(--border-color);">
+                <i class="fab fa-github" style="font-size: 24px; color: var(--text-primary);"></i>
                 <div style="text-align: left;">
-                    <div style="font-size: 15px; color: #ffffff; font-weight: 700;">GitHub</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Source Code & Release</div>
+                    <div class="about-link-title">GitHub</div>
+                    <div class="about-link-sub">Source Code & Release</div>
                 </div>
             </a>
 
             <!-- Website Resmi -->
-            <a href="javascript:void(0)" onclick="if(window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal('https://icebeats.pages.dev'); else window.open('https://icebeats.pages.dev', '_blank');" class="about-link-card" style="background: rgba(30, 215, 96, 0.1); border: 1px solid rgba(30, 215, 96, 0.3); color: #1ed760;">
-                <i class="fas fa-globe" style="font-size: 22px;"></i>
+            <a href="javascript:void(0)" onclick="if(window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal('https://icebeats.pages.dev'); else window.open('https://icebeats.pages.dev', '_blank');" class="about-link-card" style="background: rgba(30, 215, 96, 0.08); border: 1.5px solid rgba(30, 215, 96, 0.28);">
+                <i class="fas fa-globe" style="font-size: 22px; color: #15803d;"></i>
                 <div style="text-align: left;">
-                    <div style="font-size: 15px; color: #ffffff; font-weight: 700;">Website</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.6);">icebeats.pages.dev</div>
+                    <div class="about-link-title">Website</div>
+                    <div class="about-link-sub">icebeats.pages.dev</div>
                 </div>
             </a>
 
             <!-- Keluhan / Masukan -->
-            <a href="javascript:void(0)" onclick="if(window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal('https://masukanuntukdev.pages.dev'); else window.open('https://masukanuntukdev.pages.dev', '_blank');" class="about-link-card" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8;">
-                <i class="fas fa-comment-dots" style="font-size: 22px;"></i>
+            <a href="javascript:void(0)" onclick="if(window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal('https://masukanuntukdev.pages.dev'); else window.open('https://masukanuntukdev.pages.dev', '_blank');" class="about-link-card" style="background: rgba(14, 165, 233, 0.08); border: 1.5px solid rgba(14, 165, 233, 0.28);">
+                <i class="fas fa-comment-dots" style="font-size: 22px; color: #0284c7;"></i>
                 <div style="text-align: left;">
-                    <div style="font-size: 15px; color: #ffffff; font-weight: 700;">Keluhan</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Kirim Masukan Dev</div>
+                    <div class="about-link-title">Keluhan</div>
+                    <div class="about-link-sub">Kirim Masukan Dev</div>
                 </div>
             </a>
         </div>

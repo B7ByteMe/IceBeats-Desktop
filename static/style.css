@@ -19,6 +19,8 @@
     --player-bg: rgba(50, 48, 47, 0.95);
     --player-text: #ffffff;
     --player-text-sec: #999999;
+    --search-bg: #f3f4f6;
+    --border-color: #e5e7eb;
 }
 
 * {
@@ -1333,8 +1335,10 @@ body {
     color: #cccccc;
 }
 .welcome-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
 }
 .stats-input {
     width: 100%;
@@ -2339,15 +2343,15 @@ body.animated-waveform.is-playing .wave-bar:nth-child(13n) { animation-delay: -0
 
 .queue-item.playing {
     background: var(--search-bg);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border-left: 3px solid var(--accent);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    border: none;
 }
 .queue-item.playing > div > div:first-child {
     color: var(--accent) !important;
     font-weight: bold;
 }
 .queue-item.playing img {
-    border: 2px solid var(--accent);
+    border: none;
     box-sizing: border-box;
 }
 

@@ -1,5 +1,5 @@
 import requests
-from flask import Flask, render_template, Response, request, jsonify
+from flask import Flask, render_template, Response, request, jsonify, redirect
 import xml.etree.ElementTree as ET
 import re
 import math
@@ -33,6 +33,199 @@ def index():
 @app.route('/mobile')
 def mobile():
     return render_template('mobile.html')
+
+# ==========================================
+# GOOGLE OAUTH VIA DEFAULT BROWSER (CHROME)
+# ==========================================
+_external_auth_sessions = {}
+
+@app.route('/auth/google/login')
+def auth_google_login():
+    supabase_url = os.environ.get('SUPABASE_URL', 'https://jiytrtynlucsbbjpbybr.supabase.co')
+    redirect_target = "http://127.0.0.1:8000/auth/callback"
+    auth_url = f"{supabase_url}/auth/v1/authorize?provider=google&redirect_to={redirect_target}"
+    return redirect(auth_url)
+
+@app.route('/auth/callback')
+def auth_callback():
+    return '''<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceBeats - Login Berhasil</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0c0f17;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .card {
+            background: rgba(22, 27, 40, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px;
+            padding: 40px 32px;
+            text-align: center;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(30, 215, 96, 0.2);
+        }
+        .icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 20px;
+            background: rgba(30, 215, 96, 0.15);
+            border: 2px solid #1ed760;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 0 25px rgba(30, 215, 96, 0.4);
+        }
+        .icon svg {
+            width: 36px;
+            height: 36px;
+            fill: none;
+            stroke: #1ed760;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        h2 { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
+        p { color: rgba(255, 255, 255, 0.7); font-size: 15px; line-height: 1.5; margin-bottom: 24px; }
+        .status-badge {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #1ed760;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <h2>Login Berhasil!</h2>
+        <p id="msg">Akun Google Anda berhasil terhubung. Anda sekarang dapat menutup tab ini dan kembali ke aplikasi IceBeats.</p>
+        <div class="status-badge" id="status">Mengirim otentikasi ke aplikasi...</div>
+    </div>
+
+    <script>
+        (async function() {
+            try {
+                let hash = window.location.hash.substring(1);
+                let params = new URLSearchParams(hash);
+                let accessToken = params.get('access_token');
+                let refreshToken = params.get('refresh_token');
+
+                if (!accessToken) {
+                    params = new URLSearchParams(window.location.search);
+                    accessToken = params.get('access_token');
+                    refreshToken = params.get('refresh_token');
+                }
+
+                const errDesc = params.get('error_description') || params.get('error');
+                if (errDesc) {
+                    document.getElementById('status').innerText = 'Gagal login: ' + decodeURIComponent(errDesc);
+                    return;
+                }
+
+                const code = params.get('code');
+                if (!accessToken && code) {
+                    try {
+                        const tokenRes = await fetch('https://jiytrtynlucsbbjpbybr.supabase.co/auth/v1/token?grant_type=authorization_code', {
+                            method: 'POST',
+                            headers: {
+                                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppeXRydHlubHVjc2JianBieWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDg4ODQsImV4cCI6MjEwNDk4NDg4NH0.BQQVZ8GghQqGIHPpUWx9n3VKc8Vqx0gQfDjYR2fEhDo',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ auth_code: code })
+                        });
+                        const tokenData = await tokenRes.json();
+                        if (tokenData && tokenData.access_token) {
+                            accessToken = tokenData.access_token;
+                            refreshToken = tokenData.refresh_token;
+                        }
+                    } catch (e) {
+                        console.error('Error exchanging code:', e);
+                    }
+                }
+
+                if (accessToken) {
+                    const res = await fetch('https://jiytrtynlucsbbjpbybr.supabase.co/auth/v1/user', {
+                        headers: {
+                            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppeXRydHlubHVjc2JianBieWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDg4ODQsImV4cCI6MjEwNDk4NDg4NH0.BQQVZ8GghQqGIHPpUWx9n3VKc8Vqx0gQfDjYR2fEhDo',
+                            'Authorization': 'Bearer ' + accessToken
+                        }
+                    });
+                    const user = await res.json();
+                    
+                    if (user && user.email) {
+                        const uid = user.id || 'g_' + user.email.replace(/[^a-zA-Z0-9]/g, '_');
+                        const meta = user.user_metadata || {};
+                        const name = meta.full_name || meta.name || user.email.split('@')[0];
+                        const avatar = meta.avatar_url || meta.picture || '';
+
+                        await fetch('/api/auth/session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                uid: uid,
+                                email: user.email,
+                                name: name,
+                                avatar: avatar,
+                                access_token: accessToken,
+                                refresh_token: refreshToken
+                            })
+                        });
+
+                        document.getElementById('status').innerText = 'Tersambung ke IceBeats! Menutup otomatis...';
+                        setTimeout(() => {
+                            window.close();
+                        }, 1800);
+                    }
+                } else {
+                    document.getElementById('status').innerText = 'Tidak dapat mendeteksi token. Silakan coba lagi.';
+                }
+            } catch(e) {
+                console.error(e);
+                document.getElementById('status').innerText = 'Terjadi kesalahan saat memproses otentikasi.';
+            }
+        })();
+    </script>
+</body>
+</html>'''
+
+@app.route('/api/auth/session', methods=['GET', 'POST'])
+def api_auth_session():
+    global _external_auth_sessions
+    import time
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        _external_auth_sessions['latest'] = {
+            'timestamp': time.time(),
+            'data': data
+        }
+        return jsonify({'success': True})
+    else:
+        sess = _external_auth_sessions.get('latest')
+        if sess and (time.time() - sess['timestamp']) < 300:
+            data = sess['data']
+            _external_auth_sessions.pop('latest', None)
+            return jsonify({'success': True, 'logged_in': True, 'session': data})
+        return jsonify({'success': True, 'logged_in': False})
+
 
 
 @app.route('/robots.txt')
