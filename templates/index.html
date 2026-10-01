@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        if (window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            window.location.href = '/mobile';
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceBeats</title>
+    <meta name="description" content="IceBeats is a free online music streaming platform. Stream high-quality audio, discover new artists, view live lyrics, and enjoy a premium UI ad-free.">
+    
+    <meta name="author" content="IceBeats Team">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="1 days">
+    <meta name="theme-color" content="#1db954">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://airbeats.xyz/">
+    <meta property="og:title" content="IceBeats - Free Online Music Streaming">
+    <meta property="og:description" content="IceBeats is a free online music streaming platform. Stream high-quality audio, discover new artists, view live lyrics, and enjoy a premium UI ad-free.">
+    <meta property="og:image" content="/static/icon.png">
+    <meta property="og:site_name" content="IceBeats">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://airbeats.xyz/">
+    <meta name="twitter:title" content="IceBeats - Free Online Music Streaming">
+    <meta name="twitter:description" content="IceBeats is a free online music streaming platform. Stream high-quality audio, discover new artists, view live lyrics, and enjoy a premium UI ad-free.">
+    <meta name="twitter:image" content="/static/icon.png">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://airbeats.xyz/">
+
+    <!-- Apple Touch Icon & PWA tags -->
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="IceBeats">
+
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ range(1, 999999) | random }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
+<style>
+/* ==========================================
+   MODAL STYLES
+   ========================================== */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+.modal-content {
+    background: var(--card-bg, #ffffff);
+    width: 90%;
+    max-width: 400px;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+.modal-overlay.active .modal-content {
+    transform: translateY(0);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.modal-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+.modal-close:hover {
+    color: var(--text-primary);
+}
+.modal-body {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+.playlist-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.playlist-item:hover {
+    background: var(--search-bg);
+}
+.playlist-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    background: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    margin-right: 15px;
+}
+.playlist-info h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+.playlist-info p {
+    margin: 4px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+.create-playlist-section {
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    padding-top: 20px;
+}
+.create-playlist-input {
+    flex: 1;
+    background: var(--search-bg);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 10px 15px;
+    color: var(--text-primary);
+    outline: none;
+}
+.create-playlist-input:focus {
+    border-color: var(--primary-color);
+}
+.create-playlist-btn {
+    background: var(--primary-color);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 0 20px;
+    font-weight: 600;
+    cursor: pointer;
+}
+</style>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+</head>
+<body>
+
+    <!-- ONBOARDING OVERLAY -->
+    <style id="onboarding-styles">
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(1.05); }
+        }
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 40px rgba(29, 185, 84, 0.2); }
+            50% { box-shadow: 0 0 80px rgba(29, 185, 84, 0.5); }
+            100% { box-shadow: 0 0 40px rgba(29, 185, 84, 0.2); }
+        }
+
+        #onboarding-overlay {
+            position: fixed; inset: 0; z-index: 9999999;
+            background: #000000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Windows 11 style ambient background blob */
+        .ambient-blob {
+            position: absolute;
+            width: 800px; height: 800px;
+            background: radial-gradient(circle, rgba(29,185,84,0.15) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            filter: blur(60px);
+            z-index: 0;
+            animation: pulseGlow 8s ease-in-out infinite;
+        }
+
+        .onboarding-slide {
+            position: absolute;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center;
+            opacity: 0; pointer-events: none;
+            z-index: 1;
+            width: 100%; max-width: 600px; padding: 40px;
+        }
+
+        .onboarding-slide.active {
+            opacity: 1; pointer-events: auto;
+            animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .onboarding-slide.exit {
+            animation: fadeOut 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .ob-icon {
+            width: 120px; height: 120px;
+            margin-bottom: 40px;
+            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
+            border-radius: 30px;
+        }
+
+        .ob-title {
+            color: #ffffff;
+            font-size: 42px; font-weight: 700; letter-spacing: -1px;
+            margin: 0 0 20px 0;
+            line-height: 1.2;
+        }
+
+        .ob-text {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 18px; font-weight: 400; line-height: 1.6;
+            margin: 0 0 50px 0;
+            max-width: 480px;
+        }
+
+        .ob-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 16px 48px;
+            border-radius: 100px;
+            font-size: 16px; font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .ob-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+        }
+
+        .ob-btn-primary {
+            background: #1db954;
+            color: #000;
+            border: none;
+        }
+        .ob-btn-primary:hover {
+            background: #1ed760;
+            box-shadow: 0 10px 30px rgba(29, 185, 84, 0.4);
+        }
+
+        .feature-grid {
+            display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; text-align: left;
+            margin-bottom: 40px;
+        }
+        .feature-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 24px; border-radius: 20px;
+            display: flex; align-items: center; gap: 20px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        .feature-item:hover { transform: translateX(10px); background: rgba(255, 255, 255, 0.06); }
+        .feature-icon {
+            width: 48px; height: 48px; border-radius: 14px;
+            background: rgba(29, 185, 84, 0.2);
+            color: #1db954;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; flex-shrink: 0;
+        }
+    </style>
+
+    <div id="onboarding-overlay" style="display: none;">
+        <div class="ambient-blob"></div>
+
+        <!-- Slide 1: Welcome -->
+        <div class="onboarding-slide active" id="ob-slide-1">
+            <img src="/static/icon.png" class="ob-icon">
+            <h1 class="ob-title">Just a moment...</h1>
+            <p class="ob-text">We're getting things ready for you. Experience music like never before with the completely redesigned IceBeats Desktop.</p>
+            <button class="ob-btn" onclick="nextSlide(2)">Next</button>
+        </div>
+
+        <!-- Slide 2: Features -->
+        <div class="onboarding-slide" id="ob-slide-2">
+            <h1 class="ob-title" style="font-size: 36px; margin-bottom: 40px;">Everything you love. Every device.</h1>
+            
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fas fa-cloud"></i></div>
+                    <div>
+                        <div style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 4px;">True Cloud Sync</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 14px;">Your playlists, history, and favorites automatically sync between Windows, Linux, and Android.</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fas fa-gem"></i></div>
+                    <div>
+                        <div style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 4px;">Premium Liquid UI</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 14px;">Enjoy dynamic islands, live lyrics, and hardware-accelerated fluid glassmorphism.</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fas fa-ban"></i></div>
+                    <div>
+                        <div style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 4px;">100% Ad-Free</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 14px;">No interruptions. Just high-quality audio streaming, completely free forever.</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="ob-btn ob-btn-primary" onclick="finishOnboarding()">Get Started</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const hasOnboarded = localStorage.getItem('onboarded');
+            const obOverlay = document.getElementById('onboarding-overlay');
+            const authOverlay = document.getElementById('auth-overlay');
+            
+            if (!hasOnboarded) {
+                // Show onboarding, hide auth
+                obOverlay.style.display = 'flex';
+                if (authOverlay) authOverlay.style.display = 'none';
+            }
+        });
+
+        window.nextSlide = function(slideNum) {
+            const current = document.querySelector('.onboarding-slide.active');
+            if (current) {
+                current.classList.remove('active');
+                current.classList.add('exit');
+            }
+            
+            setTimeout(() => {
+                const next = document.getElementById('ob-slide-' + slideNum);
+                if (next) {
+                    next.classList.remove('exit');
+                    next.classList.add('active');
+                }
+            }, 300); // Wait for exit animation
+        };
+
+        window.finishOnboarding = function() {
+            const obOverlay = document.getElementById('onboarding-overlay');
+            const authOverlay = document.getElementById('auth-overlay');
+            
+            obOverlay.style.opacity = '0';
+            localStorage.setItem('onboarded', 'true');
+            
+            setTimeout(() => {
+                obOverlay.style.display = 'none';
+                
+                // Show login screen if they aren't logged in
+                const authState = localStorage.getItem('auth_state');
+                if (authState !== 'guest' && authState !== 'logged_in') {
+                    if (authOverlay) {
+                        authOverlay.style.opacity = '0';
+                        authOverlay.style.display = 'flex';
+                        // fade in
+                        setTimeout(() => {
+                            authOverlay.style.transition = 'opacity 0.8s ease';
+                            authOverlay.style.opacity = '1';
+                        }, 50);
+                    }
+                }
+            }, 800);
+        };
+    </script>
+    <!-- END ONBOARDING OVERLAY -->
+
+
+    <!-- AUTH OVERLAY -->
+    <style id="auth-styles">
+        @keyframes floatCard {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes orbDrift1 {
+            0% { transform: translate(-15%, -15%) scale(1); }
+            50% { transform: translate(15%, 15%) scale(1.15); }
+            100% { transform: translate(-15%, -15%) scale(1); }
+        }
+
+        @keyframes orbDrift2 {
+            0% { transform: translate(15%, 15%) scale(1.1); }
+            50% { transform: translate(-15%, -20%) scale(0.95); }
+            100% { transform: translate(15%, 15%) scale(1.1); }
+        }
+
+        @keyframes orbDrift3 {
+            0% { transform: translate(-10%, 20%) scale(0.95); }
+            50% { transform: translate(15%, -10%) scale(1.18); }
+            100% { transform: translate(-10%, 20%) scale(0.95); }
+        }
+
+        #auth-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', sans-serif;
+            background-color: #07090e;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(29, 185, 84, 0.16) 0%, transparent 60%),
+                radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 0% 100%, rgba(139, 92, 246, 0.12) 0%, transparent 50%);
+            overflow: hidden;
+        }
+
+        .auth-ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.7;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .auth-orb-green {
+            width: 540px;
+            height: 540px;
+            background: radial-gradient(circle, #1db954 0%, rgba(29, 185, 84, 0) 70%);
+            top: 5%;
+            left: 10%;
+            animation: orbDrift1 18s ease-in-out infinite;
+        }
+
+        .auth-orb-cyan {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #00d2ff 0%, rgba(0, 210, 255, 0) 70%);
+            bottom: 5%;
+            right: 8%;
+            animation: orbDrift2 22s ease-in-out infinite;
+        }
+
+        .auth-orb-purple {
+            width: 460px;
+            height: 460px;
+            background: radial-gradient(circle, #8b5cf6 0%, rgba(139, 92, 246, 0) 70%);
+            top: 35%;
+            right: 25%;
+            animation: orbDrift3 20s ease-in-out infinite;
+        }
+
+        .auth-grid-overlay {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+            background-size: 28px 28px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #auth-overlay .glass-card {
+            background: rgba(14, 18, 28, 0.82);
+            backdrop-filter: blur(36px) saturate(200%);
+            -webkit-backdrop-filter: blur(36px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-top: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 28px;
+            box-shadow: 
+                0 30px 80px rgba(0, 0, 0, 0.85),
+                0 0 50px -10px rgba(29, 185, 84, 0.22),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18);
+            animation: floatCard 6s ease-in-out infinite;
+            z-index: 2;
+        }
+
+        #auth-overlay .glass-input {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 12px !important;
+            color: #ffffff !important;
+            font-size: 15px !important;
+            transition: all 0.25s ease !important;
+        }
+        #auth-overlay .glass-input::placeholder {
+            color: rgba(255, 255, 255, 0.4) !important;
+        }
+        #auth-overlay .glass-input:focus {
+            background: rgba(255, 255, 255, 0.09) !important;
+            border: 1px solid #1ed760 !important;
+            outline: none !important;
+            box-shadow: 0 0 18px rgba(30, 215, 96, 0.35), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        #auth-overlay .glass-btn-primary {
+            background: linear-gradient(135deg, #1ed760 0%, #1db954 100%) !important;
+            color: #06090e !important;
+            font-weight: 700 !important;
+            box-shadow: 0 8px 24px rgba(29, 185, 84, 0.45) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 12px !important;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        #auth-overlay .glass-btn-primary:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 12px 30px rgba(29, 185, 84, 0.6) !important;
+            filter: brightness(1.08);
+        }
+
+        #auth-overlay .glass-btn-secondary {
+            background: rgba(255, 255, 255, 0.07) !important;
+            border: 1px solid rgba(255, 255, 255, 0.16) !important;
+            color: #f3f4f6 !important;
+            border-radius: 12px !important;
+            transition: all 0.25s ease !important;
+        }
+        #auth-overlay .glass-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.13) !important;
+            border-color: rgba(255, 255, 255, 0.3) !important;
+            color: #ffffff !important;
+            transform: translateY(-2px);
+        }
+        
+        #auth-overlay .glass-btn-google {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-weight: 600 !important;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
+            border-radius: 12px !important;
+            border: none !important;
+            transition: all 0.25s ease !important;
+        }
+        #auth-overlay .glass-btn-google:hover {
+            transform: translateY(-2px);
+            background: #ffffff !important;
+            box-shadow: 0 10px 25px rgba(255, 255, 255, 0.25) !important;
+        }
+        #auth-overlay .qr-wrapper {
+            position: relative;
+            width: 216px;
+            height: 216px;
+            margin: 0 auto 16px auto;
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 25px rgba(30, 215, 96, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+        #auth-overlay .qr-scan-laser {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #1ed760, transparent);
+            box-shadow: 0 0 14px 2px #1ed760;
+            top: 10px;
+            animation: qrScanLaserAnim 2.8s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 5;
+        }
+        @keyframes qrScanLaserAnim {
+            0% { top: 10px; opacity: 0.2; }
+            50% { opacity: 1; }
+            100% { top: 202px; opacity: 0.2; }
+        }
+        #auth-overlay .qr-expired-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 15, 25, 0.92);
+            backdrop-filter: blur(6px);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            z-index: 10;
+            color: #ffffff;
+        }
+        #auth-overlay .qr-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            padding: 7px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 20px;
+        }
+    </style>
+    
+    <div id="auth-overlay">
+        <!-- Ambient Glowing Aurora Orbs -->
+        <div class="auth-ambient-orb auth-orb-green"></div>
+        <div class="auth-ambient-orb auth-orb-cyan"></div>
+        <div class="auth-ambient-orb auth-orb-purple"></div>
+        
+        <!-- Modern Grid Texture Overlay -->
+        <div class="auth-grid-overlay"></div>
+        
+        <div class="glass-card" style="padding: 38px 36px; width: 430px; max-width: 90%; text-align: center; position: relative; overflow: hidden;">
+            
+            <!-- Subtle emerald glow inside the card -->
+            <div style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at center, rgba(29, 185, 84, 0.12) 0%, transparent 50%); pointer-events: none;"></div>
+
+            <img src="/static/icon.png" alt="IceBeats" style="width: 72px; height: 72px; border-radius: 20px; margin-bottom: 16px; box-shadow: 0 12px 28px rgba(0,0,0,0.6), 0 0 20px rgba(29, 185, 84, 0.35); border: 1.5px solid rgba(255,255,255,0.2);">
+            
+            <h2 id="auth-title" style="color: #ffffff; margin: 0 0 8px 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">Welcome to IceBeats</h2>
+            <p id="auth-subtitle" style="color: rgba(255,255,255,0.7); margin: 0 0 20px 0; font-size: 14px; font-weight: 400;">Pindai kode QR dari aplikasi IceBeats HP untuk masuk otomatis.</p>
+            
+            <div id="auth-error" style="color: #ff5555; background: rgba(255,0,0,0.12); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,0,0,0.25); font-size: 13px; margin-bottom: 16px; display: none;"></div>
+
+            <!-- QR Code Section -->
+            <div class="qr-wrapper" id="qr-wrapper">
+                <div class="qr-scan-laser" id="qr-laser"></div>
+                <div id="qr-code-box" style="width: 196px; height: 196px; display: flex; align-items: center; justify-content: center;"></div>
+                <div class="qr-expired-overlay" id="qr-expired-overlay" style="display: none;">
+                    <i class="fas fa-history" style="font-size: 28px; color: var(--accent);"></i>
+                    <div style="font-size: 13px; font-weight: 600;">Sesi QR Kedaluwarsa</div>
+                    <button class="glass-btn-primary" onclick="window.initQrLogin()" style="padding: 8px 18px; font-size: 13px; border-radius: 8px; cursor: pointer; border: none;">
+                        <i class="fas fa-redo"></i> Muat Ulang
+                    </button>
+                </div>
+            </div>
+
+            <div class="qr-badge" id="qr-status-badge">
+                <i class="fas fa-camera" style="color: #1ed760;"></i>
+                <span id="qr-status-text">Arahkan pemindai di HP ke layar ini</span>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 18px;">
+                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.12);"></div>
+                <span style="margin: 0 14px; color: rgba(255,255,255,0.45); font-size: 12px; font-weight: 500; letter-spacing: 1px;">ATAU</span>
+                <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.12);"></div>
+            </div>
+
+            <button id="btn-google-login" class="glass-btn-google" style="width: 100%; padding: 13px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; font-size: 14px;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" style="width: 18px;">
+                Continue with Google
+            </button>
+            
+            <button id="btn-guest-login" class="glass-btn-secondary" style="width: 100%; padding: 13px; border-radius: 12px; font-weight: 500; cursor: pointer; font-size: 14px;">
+                Continue as Guest
+            </button>
+        </div>
+    </div>
+
+
+    
+
+            
+
+
+    
+
+    <div class="app-window">
+        <!-- LEFT SIDEBAR -->
+        <nav class="sidebar">
+            <div class="mac-controls">
+                <span class="mac-dot red" onclick="if(window.electronAPI) { window.electronAPI.closeApp(); }" style="cursor: pointer;" title="Close App"></span>
+                <span class="mac-dot yellow" onclick="if(window.electronAPI) { window.electronAPI.minimizeApp(); }" style="cursor: pointer;" title="Minimize App"></span>
+                <span class="mac-dot green" onclick="if(window.electronAPI) { window.electronAPI.toggleFullscreen(); } else { if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e=>console.log(e)); else document.exitFullscreen(); }" style="cursor: pointer;" title="Toggle Fullscreen"></span>
+            </div>
+            
+            <div id="sidebar-main-menu">
+                <div class="nav-section">Library</div>
+                <ul class="nav-links">
+                    <li><a href="#search" class="nav-item active" id="nav-search">Browse</a></li>
+                    <li><a href="#home" class="nav-item" id="nav-home">Songs</a></li>
+                    <li><a href="#albums" class="nav-item" id="nav-albums">Albums</a></li>
+                    <li><a href="#artists" class="nav-item" id="nav-artists">Artists</a></li>
+                </ul>
+
+                <div class="nav-section">My music</div>
+                <ul class="nav-links">
+                    <li><a href="#history" class="nav-item" id="nav-history">Recently Played</a></li>
+                    <li><a href="#favorites" class="nav-item" id="nav-favorites">Favorite Songs</a></li>
+                    <li><a href="#playlists" class="nav-item" id="nav-playlists">Playlists</a></li>
+                    <li><a href="#cached" class="nav-item" id="nav-cached">Cached Songs</a></li>
+                </ul>
+
+            </div>
+            
+            <div id="sidebar-settings-menu" style="display: none;">
+                <div class="nav-section">
+                    <a href="#home" style="color: var(--text-secondary); text-decoration: none; font-size: 14px; margin-bottom: 20px; display: inline-block;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
+                <div class="nav-section">Account</div>
+                <ul class="nav-links">
+                    <li><a href="#settings/profile" class="nav-item" id="nav-settings-profile">Profile & Badges</a></li>
+                    <li><a href="#" class="nav-item" style="color: #ff4444;" id="nav-logout" onclick="window.logoutUser()">Sign Out</a></li>
+                </ul>
+                <div class="nav-section">Settings</div>
+                <ul class="nav-links">
+                    <li><a href="#settings/appearance" class="nav-item" id="nav-settings-appearance">Appearance</a></li>
+                    <li><a href="#settings/about" class="nav-item" id="nav-settings-about">About</a></li>
+                    <li><a href="#settings/updates" class="nav-item" id="nav-settings-updates">Updates</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- APP RIGHT AREA -->
+        <div class="app-right">
+            <!-- TOP BAR (FULL WIDTH OF APP RIGHT) -->
+            <header class="top-bar">
+                <!-- (Breadcrumb is inside main content) -->
+                
+                <div class="search-box" style="position: relative;">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="globalSearch" placeholder="Search..." autocomplete="off">
+                    <div id="searchSuggestions" class="search-suggestions" style="display:none;"></div>
+                </div>
+
+                <div class="top-links">
+                    <a href="#new-releases">New Releases</a>
+                    <a href="#">New Feed</a>
+                    <a href="javascript:void(0)" onclick="window.playMadeForYouShuffle()">Shuffle Play</a>
+                </div>
+                
+                <div class="user-profile">
+                    <a href="#stats" style="color: inherit; text-decoration: none; margin-right: 10px;" title="Leaderboard & Stats">
+                        <i class="fas fa-trophy stats-nav-icon"></i>
+                    </a>
+                    <a href="#settings/appearance" style="color: inherit; text-decoration: none;"><i class="fas fa-cog"></i></a>
+                    <i class="far fa-bell"></i>
+                    <img src="https://ui-avatars.com/api/?name=User&background=ddd&color=333" alt="User">
+                </div>
+            </header>
+
+            <!-- SPLIT VIEW -->
+            <div class="content-split">
+                <!-- MAIN CONTENT -->
+                <div class="main-content">
+                    <div class="scroll-container">
+                        <div id="ptr-indicator"><i class="fas fa-spinner"></i></div>
+                        <div class="loading" id="globalLoading" style="display: none;">
+                            <div class="lottie-spinner" style="width: 60px; height: 60px; margin: 0 auto;"></div>
+                        </div>
+                        <div id="router-view" class="router-view">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT PANEL -->
+                <div class="right-panel">
+                    <div class="now-playing-large">
+                        <div class="np-header">
+                            <h3>Now Playing</h3>
+                        </div>
+                        <div class="np-image-container">
+                            <img id="rightPanelImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="skeleton" alt="Now Playing">
+                        </div>
+                        <div class="np-info">
+                            <div class="np-title-row">
+                                <div>
+                                    <div id="rightPanelTitle" class="np-title">No song</div>
+                                    <div id="rightPanelArtist" class="np-artist">Artist</div>
+                                </div>
+                                <div style="display: flex; gap: 16px; align-items: center; justify-content: flex-end;">
+                                    <i class="far fa-heart" id="likeBtn" style="cursor:pointer; font-size: 18px; color: var(--text-secondary);"></i>
+                                    <i class="fas fa-folder-plus" id="playlistBtn" style="cursor:pointer; font-size: 18px; color: var(--text-secondary);" title="Add to Playlist"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="queue-section" id="queuePanel">
+                        <div id="queueList" class="queue-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ANDROID STYLE BOTTOM NAV (Mobile Only) -->
+    <div class="mobile-bottom-nav" id="mobileBottomNav" style="display: none;">
+        <a href="#search" class="mobile-nav-item active" id="mob-nav-search">
+            <i class="fas fa-compass"></i>
+            <span>Browse</span>
+        </a>
+        <a href="#home" class="mobile-nav-item" id="mob-nav-home">
+            <i class="fas fa-music"></i>
+            <span>Songs</span>
+        </a>
+        <a href="javascript:void(0)" class="mobile-nav-item" onclick="focusMobileSearch()" id="mob-nav-search-btn">
+            <i class="fas fa-search"></i>
+            <span>Search</span>
+        </a>
+        <a href="#library" class="mobile-nav-item" id="mob-nav-library">
+            <i class="fas fa-swatchbook"></i>
+            <span>Library</span>
+        </a>
+    </div>
+
+    <!-- FLOATING PLAYER -->
+    <div class="floating-player-wrapper">
+        <div class="floating-player" id="playerContainer">
+            <div class="fp-left">
+                <img id="playerImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="skeleton" alt="Cover">
+                <div class="fp-info">
+                    <div id="playerTitle" class="fp-title">No song</div>
+                    <div id="playerArtist" class="fp-artist">Artist</div>
+                </div>
+            </div>
+            
+            <div class="fp-center">
+                <div class="fp-controls">
+                    <button class="icon-btn fp-btn" id="prevBtn"><i class="fas fa-step-backward"></i></button>
+                    <button class="fp-play-btn" id="playPauseBtn"><i class="fas fa-play"></i></button>
+                    <button class="icon-btn fp-btn" id="nextBtn"><i class="fas fa-step-forward"></i></button>
+                </div>
+                <div class="fp-progress-container" id="progressBarContainer">
+                    <div class="waveform-wrapper" id="waveformWrapper">
+                        <div class="waveform-gray" id="waveformGray"></div>
+                        <div class="waveform-active" id="waveformActive"></div>
+                    </div>
+                </div>
+                <div class="fp-time"><span id="currentTime">0:00</span></div>
+            </div>
+
+            <div class="fp-right">
+                <button class="icon-btn" id="shuffleBtn" onclick="window.toggleShuffle()" title="Shuffle"><i class="fas fa-random"></i></button>
+                <button class="icon-btn" id="repeatBtn" onclick="window.toggleRepeat()" title="Repeat"><i class="fas fa-redo"></i></button>
+                <button class="icon-btn" id="downloadBtn" onclick="window.downloadCurrentSong()" title="Download Song"><i class="fas fa-download"></i></button>
+                <button class="icon-btn" id="lyricsBtn" onclick="window.toggleLyrics()" title="Lyrics"><i class="fas fa-microphone-alt"></i></button>
+                <button class="icon-btn" onclick="window.openListenTogetherModal()" title="Listen Together"><i class="fas fa-users" style="color: #1DB954;"></i></button>
+                <button class="icon-btn" id="muteBtn" onclick="window.toggleMute()" title="Mute/Unmute"><i class="fas fa-volume-up"></i></button>
+            </div>
+        </div>
+    </div>
+    <audio id="audioElement"></audio>
+
+    <!-- PLAYLIST MODAL -->
+    <div class="modal-overlay" id="playlistModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Add to Playlist</div>
+                <button class="modal-close" onclick="window.closePlaylistModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="playlistModalBody">
+                <!-- Playlists injected here -->
+            </div>
+            <div class="create-playlist-section">
+                <input type="text" id="newPlaylistInput" class="create-playlist-input" placeholder="New Playlist Name" onkeypress="if(event.key === 'Enter') window.createAndAddToPlaylist()">
+                <button class="create-playlist-btn" onclick="window.createAndAddToPlaylist()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v={{ range(1, 999999) | random }}"></script>
+    <script src="{{ url_for('static', filename='listen-together.js') }}?v={{ range(1, 999999) | random }}"></script>
+
+    <!-- Lyrics Overlay -->
+    <div id="lyricsOverlay" class="lyrics-overlay" style="display: none;">
+        <div class="lyrics-content-wrapper">
+            
+            <div class="lyrics-left-panel">
+                <img id="lyricsLeftCover" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Album Cover">
+                <div id="lyricsLeftTitle">Song Title</div>
+                <div id="lyricsLeftArtist">Artist Name</div>
+                
+                <div class="fp-progress-container lyrics-waveform" id="lyricsProgressBarContainer">
+                    <div class="waveform-wrapper" id="lyricsWaveformWrapper">
+                        <div class="waveform-gray" id="lyricsWaveformGray"></div>
+                        <div class="waveform-active" id="lyricsWaveformActive"></div>
+                    </div>
+                </div>
+                
+                <div class="lyrics-left-controls">
+                    <button class="lyrics-ctrl-btn" onclick="document.getElementById('prevBtn').click()"><i class="fas fa-step-backward"></i></button>
+                    <button class="lyrics-ctrl-btn play-pause" id="lyricsLeftPlayBtn" onclick="document.getElementById('playPauseBtn').click()"><i class="fas fa-pause"></i></button>
+                    <button class="lyrics-ctrl-btn" onclick="document.getElementById('nextBtn').click()"><i class="fas fa-step-forward"></i></button>
+                </div>
+            </div>
+
+            <div class="lyrics-right-panel">
+                <div class="lyrics-header">
+                    <h2 id="lyricsTitle">Song Title</h2>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="lyrics-close-btn" id="lyricsRefreshBtn" onclick="window.forceRefreshLyrics()" title="Refresh Lyrics">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="lyrics-close-btn" onclick="window.closeLyrics()" title="Close Lyrics">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="lyricsError" class="lyrics-error" style="display: none;"></div>
+                <div id="lyricsContent" class="lyrics-container"></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Update Modal -->
+    <style>
+        #update-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 7, 12, 0.75);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            font-family: 'Inter', sans-serif;
+        }
+        .update-modal-card {
+            background: rgba(18, 20, 29, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-top: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            padding: 32px 28px;
+            max-width: 480px;
+            width: 92%;
+            text-align: center;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85), 0 0 35px -5px rgba(30, 215, 96, 0.2);
+            position: relative;
+            overflow: hidden;
+            animation: modalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes modalPopIn {
+            0% { opacity: 0; transform: scale(0.92) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        #update-changelog-box::-webkit-scrollbar {
+            width: 6px;
+        }
+        #update-changelog-box::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+        }
+        #update-changelog-box::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+        .update-link-btn:hover {
+            filter: brightness(1.15);
+            transform: translateY(-2px);
+        }
+    </style>
+
+    <div id="update-modal">
+        <div class="update-modal-card">
+            <!-- Subtle Top Glow -->
+            <div style="position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 240px; height: 120px; background: radial-gradient(circle, rgba(30, 215, 96, 0.25) 0%, transparent 70%); pointer-events: none;"></div>
+
+            <!-- Header Icon (IceBeats App Icon with luminous aura) -->
+            <div style="display: inline-flex; align-items: center; justify-content: center; width: 68px; height: 68px; border-radius: 20px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 10px 25px rgba(0,0,0,0.5), 0 0 25px rgba(30, 215, 96, 0.3); margin-bottom: 18px; position: relative;">
+                <img src="/static/icon.png" alt="IceBeats" style="width: 44px; height: 44px; border-radius: 12px;">
+            </div>
+
+            <!-- Title & Subtitle -->
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">Update Available</h2>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 18px;">
+                <span style="color: rgba(255, 255, 255, 0.65); font-size: 14px;">Versi baru telah rilis:</span>
+                <span id="update-version-name" style="background: rgba(30, 215, 96, 0.15); color: #1ed760; border: 1px solid rgba(30, 215, 96, 0.35); padding: 2px 12px; border-radius: 20px; font-weight: 700; font-size: 13px; letter-spacing: 0.5px;"></span>
+            </div>
+
+            <!-- Release Notes / Changelog Container -->
+            <div style="text-align: left; margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255, 255, 255, 0.5); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-list-ul" style="color: #1ed760;"></i> Rincian Pembaruan:
+                </div>
+                <div id="update-changelog-box" style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 14px 16px; max-height: 140px; overflow-y: auto; color: rgba(255, 255, 255, 0.85); font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">
+                    Memuat catatan pembaruan...
+                </div>
+            </div>
+
+            <!-- Community & Support Links Row -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px;">
+                <a href="https://whatsapp.com/channel/0029Vb8V2qh8V0tpL0VDky0M" id="btn-update-community" class="update-link-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.3); border-radius: 12px; color: #25d366; text-decoration: none; font-size: 13px; font-weight: 600; transition: all 0.2s ease;">
+                    <i class="fab fa-whatsapp" style="font-size: 16px;"></i> Gabung Komunitas
+                </a>
+                <a href="https://masukanuntukdev.pages.dev" id="btn-update-feedback" class="update-link-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; color: #38bdf8; text-decoration: none; font-size: 13px; font-weight: 600; transition: all 0.2s ease;">
+                    <i class="fas fa-comment-dots" style="font-size: 15px;"></i> Masukan / Keluhan
+                </a>
+            </div>
+
+            <!-- Primary Buttons (Cancel & Download) -->
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="btn-update-cancel" style="padding: 12px 20px; background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; flex: 1; transition: all 0.2s ease;">
+                    Cancel
+                </button>
+                <button id="btn-update-download" style="padding: 12px 20px; background: linear-gradient(135deg, #1ed760, #1db954); color: #06090e; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-family: inherit; font-size: 14px; flex: 1.4; box-shadow: 0 6px 20px rgba(30, 215, 96, 0.4); display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;">
+                    <i class="fas fa-download"></i> Download Update
+                </button>
+            </div>
+
+            <!-- Developer Attribution Footer -->
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 12px; color: rgba(255, 255, 255, 0.45); display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <span>Developer:</span>
+                <strong style="color: rgba(255, 255, 255, 0.9); font-weight: 600;">Official Valora Group</strong>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='lyrics.js') }}?v={{ range(1, 999999) | random }}"></script>
+    <script src="{{ url_for('static', filename='stats.js') }}?v={{ range(1, 999999) | random }}"></script>
+
+    <!-- Firebase SDK -->
+    
+    
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="{{ url_for('static', filename='auth.js') }}?v={{ range(1, 999999) | random }}"></script>
+
+</body>
+</html>
+
+

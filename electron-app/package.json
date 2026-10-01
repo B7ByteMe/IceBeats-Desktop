@@ -1,0 +1,94 @@
+{
+    "name": "icebeats",
+    "version": "0.0.1",
+    "description": "IceBeats Desktop App",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder --win"
+    },
+    "build": {
+        "appId": "com.valora.icebeats",
+        "productName": "IceBeats",
+        "publish": {
+            "provider": "github",
+            "owner": "B7ByteMe",
+            "repo": "IceBeats-Desktop"
+        },
+        "directories": {
+            "buildResources": "build"
+        },
+        "extraResources": [
+            {
+                "from": "../dist/server",
+                "to": "server",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ],
+        "win": {
+            "target": [
+                "nsis",
+                "portable"
+            ],
+            "icon": "icon.png"
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": true,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": "always",
+            "createStartMenuShortcut": true,
+            "shortcutName": "IceBeats",
+            "license": "license.txt",
+            "artifactName": "IceBeats-v${version}-setup.${ext}"
+        },
+        "portable": {
+            "artifactName": "IceBeats-v${version}-portable.${ext}"
+        },
+        "mac": {
+            "target": [
+                "dmg"
+            ],
+            "icon": "icon.png"
+        },
+        "dmg": {
+            "artifactName": "IceBeats-v${version}-mac.${ext}",
+            "title": "Install IceBeats"
+        },
+        "linux": {
+            "target": [
+                "AppImage",
+                "deb",
+                "snap"
+            ],
+            "icon": "icon.png"
+        },
+        "appImage": {
+            "artifactName": "IceBeats-v${version}-linux.${ext}"
+        },
+        "deb": {
+            "artifactName": "IceBeats-v${version}-linux.${ext}"
+        },
+        "snapcraft": {
+            "artifactName": "IceBeats-v${version}-linux.${ext}",
+            "base": "core22"
+        }
+    },
+    "keywords": [],
+    "author": {
+        "name": "Official Valora Group"
+    },
+    "license": "ISC",
+    "type": "commonjs",
+    "devDependencies": {
+        "electron": "^43.0.0",
+        "electron-builder": "^26.15.3"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/B7ByteMe/IceBeats-Desktop.git"
+    },
+    "homepage": "https://github.com/B7ByteMe/IceBeats-Desktop#readme"
+}

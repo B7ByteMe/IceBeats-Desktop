@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+uploads/
+
+# PyInstaller build artifacts
+build/
+dist/
+
+# Node / Electron
+node_modules/
+electron-app/node_modules/
+electron-app/dist/
+IceBeats/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+graph.txt
