@@ -36,7 +36,7 @@
         },
         "nsis": {
             "oneClick": false,
-            "perMachine": true,
+            "perMachine": false,
             "allowToChangeInstallationDirectory": true,
             "createDesktopShortcut": "always",
             "createStartMenuShortcut": true,
