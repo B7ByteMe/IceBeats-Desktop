@@ -1,0 +1,32 @@
+name: Publish Release from Artifact
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact from Build
+        uses: actions/download-artifact@v4
+        with:
+          name: IceBeats-Windows-EXE
+          path: release-files
+          run-id: 36854906427
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inspect Files
+        run: ls -la release-files
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.0.1
+          name: IceBeats Desktop v0.0.1
+          files: release-files/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
