@@ -453,10 +453,13 @@
         window.finishOnboarding = function() {
             var obOverlay = document.getElementById('onboarding-overlay');
             var authOverlay = document.getElementById('auth-overlay');
-            obOverlay.style.opacity = '0';
+            if (obOverlay) {
+                obOverlay.style.opacity = '0';
+                obOverlay.style.pointerEvents = 'none';
+            }
             localStorage.setItem('icebeats_onboarded_v2', 'true');
             setTimeout(function() {
-                obOverlay.style.display = 'none';
+                if (obOverlay) obOverlay.style.display = 'none';
                 var authState = localStorage.getItem('auth_state');
                 if (authState !== 'guest' && authState !== 'logged_in') {
                     if (authOverlay) {

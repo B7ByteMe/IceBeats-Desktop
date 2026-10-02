@@ -1,5 +1,10 @@
-window.addEventListener('error', function(e) { if (e.target.tagName === 'IMG') { if (e.target.getAttribute('data-fallback-applied')) return; e.target.setAttribute('data-fallback-applied', 'true'); e.target.src = 'https://via.placeholder.com/150x150/1c1a1a/c6e355?text=Music'; } }, true);
+window.addEventListener('error', function(e) { if (e.target && e.target.tagName === 'IMG') { if (e.target.getAttribute('data-fallback-applied')) return; e.target.setAttribute('data-fallback-applied', 'true'); e.target.src = 'https://via.placeholder.com/150x150/1c1a1a/c6e355?text=Music'; } }, true);
 
+// Global playback queue state (declared early to prevent TDZ ReferenceError)
+let currentQueue = [];
+let currentIndex = -1;
+window.currentQueue = currentQueue;
+window.getCurrentTrack = () => (currentQueue && currentIndex >= 0 ? currentQueue[currentIndex] : null);
 
 window.getClickableArtistsHtml = function(song) {
     if (!song) return 'Unknown Artist';
@@ -36,8 +41,8 @@ window.setTheme = function(theme) {
             darkBtn.style.boxShadow = 'none';
         }
     }
-    if (typeof updateQueueUI === 'function') {
-        updateQueueUI();
+    if (typeof updateQueueUI === 'function' && typeof currentQueue !== 'undefined' && Array.isArray(currentQueue)) {
+        try { updateQueueUI(); } catch(e) {}
     }
 };
 
@@ -220,9 +225,6 @@ window.toggleHeart = (event, trackId) => {
     }
 };
 
-let currentQueue = [];
-let currentIndex = -1;
-window.getCurrentTrack = () => currentQueue[currentIndex];
 let favoriteSongs = JSON.parse(localStorage.getItem('favoriteSongs') || '[]');
 
 // Scrub corrupted history on load
@@ -1634,7 +1636,7 @@ if (queueBtn) {
 
 function updateQueueUI() {
     const queueList = document.getElementById('queueList');
-    if (!queueList) return;
+    if (!queueList || typeof currentQueue === 'undefined' || !Array.isArray(currentQueue)) return;
     queueList.innerHTML = '';
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || localStorage.getItem('theme') === 'dark';
 

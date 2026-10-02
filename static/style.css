@@ -2656,6 +2656,7 @@ body.animated-waveform.is-playing .wave-bar:nth-child(13n) { animation-delay: -0
     transform: translateY(-100%);
     transition: transform 0.3s ease, opacity 0.3s ease;
     z-index: 100;
+    pointer-events: none;
 }
 #ptr-indicator.ptr-refreshing {
     opacity: 1;
