@@ -61,6 +61,8 @@
             "title": "Install IceBeats"
         },
         "linux": {
+            "maintainer": "Official Valora Group <b7byteme@users.noreply.github.com>",
+            "category": "Audio",
             "target": [
                 "AppImage",
                 "deb"
@@ -76,7 +78,8 @@
     },
     "keywords": [],
     "author": {
-        "name": "Official Valora Group"
+        "name": "Official Valora Group",
+        "email": "b7byteme@users.noreply.github.com"
     },
     "license": "ISC",
     "type": "commonjs",
