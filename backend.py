@@ -588,6 +588,7 @@ def add_yt_routes(app, get_lyrics_fn):
             return "No id", 400
         cache_dir = _get_cache_dir()
         audio_path = os.path.join(cache_dir, 'Songs', f"{song_id}.m4a")
-        if os.path.exists(audio_path):
+        if os.path.exists(audio_path) and os.path.getsize(audio_path) > 1000:
             return send_file(audio_path, mimetype='audio/mp4')
-        return "Not found", 404
+        # If cached file does not exist yet or is downloading, smoothly fallback to live streaming
+        return redirect(f"/api/play_stream?id={song_id}")

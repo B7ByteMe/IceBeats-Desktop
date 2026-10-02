@@ -78,8 +78,15 @@ window.initQrLogin = async function() {
     };
 
     try {
-        // 1. Post to storage bucket (backups/qr_sessions/${currentQrToken}.json)
-        await fetch(`${SUPABASE_URL}/storage/v1/object/backups/qr_sessions/${currentQrToken}.json`, {
+        // 1. Post to SQL table first (instant sync)
+        await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions`, {
+            method: 'POST',
+            headers: getSupabaseHeaders(),
+            body: JSON.stringify(sessionData)
+        });
+
+        // 2. Fallback to storage bucket in background if available
+        fetch(`${SUPABASE_URL}/storage/v1/object/backups/qr_sessions/${currentQrToken}.json`, {
             method: 'POST',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -88,19 +95,12 @@ window.initQrLogin = async function() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(sessionData)
-        });
-
-        // 2. Also attempt post to SQL table if it exists
-        fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions`, {
-            method: 'POST',
-            headers: getSupabaseHeaders(),
-            body: JSON.stringify(sessionData)
         }).catch(() => {});
     } catch (e) {
         console.warn('Failed to publish initial QR session to cloud', e);
     }
 
-    // Start polling every 1500ms
+    // Start polling every 1000ms
     const startTime = Date.now();
     qrPollInterval = setInterval(async () => {
         // Expire after 5 minutes
@@ -115,22 +115,26 @@ window.initQrLogin = async function() {
         try {
             let sessionResult = null;
 
-            // Check bucket first (accessible to public without RLS)
-            const bucketRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/backups/qr_sessions/${currentQrToken}.json?_t=${Date.now()}`, {
-                headers: { 'Cache-Control': 'no-cache' }
+            // 1. Check SQL table first (Primary & Fast)
+            const tableRes = await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions?id=eq.${currentQrToken}&select=*`, {
+                headers: getSupabaseHeaders()
             });
+            if (tableRes.ok) {
+                const rows = await tableRes.json();
+                if (rows && rows.length > 0) sessionResult = rows[0];
+            }
 
-            if (bucketRes.ok) {
-                sessionResult = await bucketRes.json();
-            } else {
-                // Fallback check SQL table
-                const tableRes = await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions?id=eq.${currentQrToken}&select=*`, {
-                    headers: getSupabaseHeaders()
-                });
-                if (tableRes.ok) {
-                    const rows = await tableRes.json();
-                    if (rows && rows.length > 0) sessionResult = rows[0];
-                }
+            // 2. Fallback check bucket only if not found in table
+            if (!sessionResult || sessionResult.status === 'pending') {
+                try {
+                    const bucketRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/backups/qr_sessions/${currentQrToken}.json?_t=${Date.now()}`, {
+                        headers: { 'Cache-Control': 'no-cache' }
+                    });
+                    if (bucketRes.ok) {
+                        const bData = await bucketRes.json();
+                        if (bData && bData.status === 'approved') sessionResult = bData;
+                    }
+                } catch(e) {}
             }
 
             if (sessionResult && sessionResult.status === 'approved') {

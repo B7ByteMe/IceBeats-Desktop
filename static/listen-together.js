@@ -240,7 +240,10 @@ window.openListenTogetherModal = function() {
         overlay.style.justifyContent = 'center';
         
         const modal = document.createElement('div');
-        modal.style.background = 'var(--panel-bg)';
+        modal.style.background = 'var(--card-bg)';
+        modal.style.border = '1px solid var(--border-color)';
+        modal.style.color = 'var(--text-primary)';
+        modal.style.boxShadow = '0 16px 40px rgba(0,0,0,0.5)';
         modal.style.padding = '30px';
         modal.style.borderRadius = '16px';
         modal.style.width = '400px';
@@ -258,24 +261,24 @@ window.openListenTogetherModal = function() {
     if (window.ListenTogether.session) {
         modal.innerHTML = `
             <div style="position: absolute; top: 15px; right: 15px; cursor: pointer; color: var(--text-secondary);" onclick="document.getElementById('lt-modal-overlay').style.display='none'"><i class="fas fa-times"></i></div>
-            <h2 style="margin-top:0; color: #1DB954;"><i class="fas fa-users"></i> Listen Together</h2>
-            <p>You are in a session!</p>
-            <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0;">
+            <h2 style="margin-top:0; color: var(--accent);"><i class="fas fa-users"></i> Listen Together</h2>
+            <p style="color: var(--text-primary);">You are in a session!</p>
+            <div style="background: var(--search-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0;">
                 <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 5px;">SESSION CODE</div>
-                <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; user-select: text;">${window.ListenTogether.code}</div>
+                <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: var(--accent); user-select: text;">${window.ListenTogether.code}</div>
             </div>
             <p style="text-align:center; color: var(--text-secondary);">Participants: ${window.ListenTogether.session.participantList ? window.ListenTogether.session.participantList.length : 1}</p>
-            <button class="btn-primary" style="width: 100%; background: #ef4444; margin-top: 10px;" onclick="window.ListenTogether.leaveSession(); document.getElementById('lt-modal-overlay').style.display='none';">Leave Session</button>
+            <button class="btn-primary" style="width: 100%; background: #ef4444; color: #fff; margin-top: 10px;" onclick="window.ListenTogether.leaveSession(); document.getElementById('lt-modal-overlay').style.display='none';">Leave Session</button>
         `;
     } else {
         modal.innerHTML = `
             <div style="position: absolute; top: 15px; right: 15px; cursor: pointer; color: var(--text-secondary);" onclick="document.getElementById('lt-modal-overlay').style.display='none'"><i class="fas fa-times"></i></div>
-            <h2 style="margin-top:0;"><i class="fas fa-users"></i> Listen Together</h2>
+            <h2 style="margin-top:0; color: var(--text-primary);"><i class="fas fa-users" style="color: var(--accent);"></i> Listen Together</h2>
             <p style="color: var(--text-secondary); font-size: 14px;">Listen to music in sync with your friends.</p>
             
             <div style="margin-top: 20px;">
                 <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; display: block;">YOUR NAME</label>
-                <input type="text" id="lt-name" placeholder="E.g. Web User" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: white; border-radius: 8px; margin-bottom: 15px; user-select: text; -webkit-user-select: text; pointer-events: auto; -webkit-app-region: no-drag;">
+                <input type="text" id="lt-name" placeholder="E.g. Web User" style="width: 100%; padding: 12px; background: var(--search-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; margin-bottom: 15px; user-select: text; -webkit-user-select: text; pointer-events: auto; -webkit-app-region: no-drag;">
                 
                 <button class="btn-primary" style="width: 100%; margin-bottom: 20px;" onclick="const n = document.getElementById('lt-name').value; window.ListenTogether.createSession(n);">Create New Session</button>
                 
@@ -286,7 +289,7 @@ window.openListenTogetherModal = function() {
                 </div>
                 
                 <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; display: block;">JOIN CODE</label>
-                <input type="text" id="lt-code" placeholder="6-letter code" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: white; border-radius: 8px; margin-bottom: 15px; text-transform: uppercase; user-select: text; -webkit-user-select: text; pointer-events: auto; -webkit-app-region: no-drag;">
+                <input type="text" id="lt-code" placeholder="6-letter code" style="width: 100%; padding: 12px; background: var(--search-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; margin-bottom: 15px; text-transform: uppercase; user-select: text; -webkit-user-select: text; pointer-events: auto; -webkit-app-region: no-drag;">
                 <button class="btn-primary" style="width: 100%; background: var(--secondary-color);" onclick="const n = document.getElementById('lt-name').value; const c = document.getElementById('lt-code').value; window.ListenTogether.joinSession(c, n);">Join Session</button>
             </div>
         `;

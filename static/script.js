@@ -26,11 +26,18 @@ window.setTheme = function(theme) {
     if (darkBtn && lightBtn) {
         if (theme === 'dark') {
             darkBtn.style.border = '2px solid var(--accent)';
-            lightBtn.style.border = '2px solid transparent';
+            darkBtn.style.boxShadow = '0 0 16px rgba(30, 215, 96, 0.35)';
+            lightBtn.style.border = '1px solid var(--border-color)';
+            lightBtn.style.boxShadow = 'none';
         } else {
             lightBtn.style.border = '2px solid var(--accent)';
-            darkBtn.style.border = '2px solid transparent';
+            lightBtn.style.boxShadow = '0 0 16px rgba(198, 227, 85, 0.35)';
+            darkBtn.style.border = '1px solid var(--border-color)';
+            darkBtn.style.boxShadow = 'none';
         }
+    }
+    if (typeof updateQueueUI === 'function') {
+        updateQueueUI();
     }
 };
 
@@ -1128,7 +1135,28 @@ async function renderAlbum(id) {
 // ==========================================
 const audio = document.getElementById('audioElement');
 audio.onerror = (e) => {
-    alert('Audio Error: ' + (audio.error ? audio.error.code + ' ' + audio.error.message : 'Unknown error'));
+    const errCode = audio.error ? audio.error.code : 0;
+    const errMsg = audio.error ? audio.error.message : 'Unknown';
+    console.warn(`[Audio Error ${errCode}] ${errMsg}`);
+
+    const track = window.getCurrentTrack ? window.getCurrentTrack() : null;
+    
+    // 1. If failed on /api/cache/stream, fallback immediately to live play_stream
+    if (audio.src && audio.src.includes('/api/cache/stream') && track) {
+        console.log('[Audio] Cache stream failed, retrying with live stream for:', track.id);
+        audio.src = `/api/play_stream?id=${track.id}`;
+        audio.play().catch(err => console.log('Live stream fallback intercepted:', err));
+        return;
+    }
+
+    // 2. If track stream fails, smoothly skip to next track without showing popup dialog
+    if (typeof currentQueue !== 'undefined' && currentQueue.length > 1) {
+        console.log('[Audio] Skipping unplayable track to next in queue...');
+        setTimeout(() => {
+            const nextBtn = document.getElementById('nextBtn');
+            if (nextBtn) nextBtn.click();
+        }, 500);
+    }
 };
 const playPauseBtn = document.getElementById('playPauseBtn');
 const progressBar = document.getElementById('waveformActive');
@@ -1457,12 +1485,18 @@ document.getElementById('prevBtn').addEventListener('click', () => {
     if (currentIndex > 0) {
         currentIndex--;
         loadCurrentTrack();
+    } else if (currentQueue.length > 1) {
+        currentIndex = currentQueue.length - 1;
+        loadCurrentTrack();
     }
 });
 
 document.getElementById('nextBtn').addEventListener('click', () => {
     if (currentIndex < currentQueue.length - 1) {
         currentIndex++;
+        loadCurrentTrack();
+    } else if (currentQueue.length > 1) {
+        currentIndex = 0;
         loadCurrentTrack();
     }
 });
@@ -1545,7 +1579,7 @@ audio.addEventListener('timeupdate', () => {
 });
 
 audio.addEventListener('ended', () => {
-    // Cache the song if not already cached
+    // Cache the song in background if not already cached
     const currentSong = window.getCurrentTrack ? window.getCurrentTrack() : null;
     if (currentSong && window.cachedSongsList && !window.cachedSongsList.includes(currentSong.id)) {
         const payload = {
@@ -1557,22 +1591,30 @@ audio.addEventListener('ended', () => {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
-        }).then(res => res.json()).then(data => {
-            if (data.success) {
-                window.cachedSongsList.push(currentSong.id);
-            }
         }).catch(e => console.error('Cache add error', e));
     }
 
     if (window.isRepeat) {
         audio.currentTime = 0;
-        audio.play().catch(e => console.log(e));
+        audio.play().catch(e => console.log('Repeat play error:', e));
     } else if (window.isShuffle && currentQueue.length > 0) {
         let randIdx = Math.floor(Math.random() * currentQueue.length);
         currentIndex = randIdx;
         loadCurrentTrack();
     } else {
-        document.getElementById('nextBtn').click();
+        if (currentIndex < currentQueue.length - 1) {
+            document.getElementById('nextBtn').click();
+        } else if (currentQueue.length > 1) {
+            currentIndex = 0;
+            loadCurrentTrack();
+        } else if (typeof window.generateSmartQueue === 'function') {
+            window.generateSmartQueue().then(() => {
+                if (currentIndex < currentQueue.length - 1) {
+                    currentIndex++;
+                    loadCurrentTrack();
+                }
+            });
+        }
     }
 });
 
@@ -1592,18 +1634,25 @@ if (queueBtn) {
 
 function updateQueueUI() {
     const queueList = document.getElementById('queueList');
+    if (!queueList) return;
     queueList.innerHTML = '';
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || localStorage.getItem('theme') === 'dark';
+
     currentQueue.forEach((track, i) => {
         if (track && track.id) window.allTracks[track.id] = track;
+        const isCurrent = (i === currentIndex);
+        const titleColor = isCurrent ? 'var(--accent)' : (isDark ? '#ffffff' : 'var(--text-primary)');
+        const artistColor = isDark ? '#9ca3af' : 'var(--text-secondary)';
+
         const div = document.createElement('div');
-        div.className = `queue-item cm-queue-item ${i === currentIndex ? 'playing' : ''}`;
+        div.className = `queue-item cm-queue-item ${isCurrent ? 'playing' : ''}`;
         div.setAttribute('data-id', track.id);
         div.setAttribute('data-index', i);
         div.innerHTML = `
             <img src="${getHighestQualityImage(track.image)}">
             <div style="flex:1; overflow:hidden">
-                <div style="font-size:14px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden">${track.name || track.title}</div>
-                <div style="font-size:12px; color:var(--text-secondary)">${track.artists?.primary?.[0]?.name || ''}</div>
+                <div class="queue-track-title" style="font-size:14px; font-weight:${isCurrent ? '700' : '500'}; color:${titleColor} !important; white-space:nowrap; text-overflow:ellipsis; overflow:hidden">${track.name || track.title || 'Unknown Title'}</div>
+                <div class="queue-track-artist" style="font-size:12px; color:${artistColor} !important; white-space:nowrap; text-overflow:ellipsis; overflow:hidden">${track.artists?.primary?.[0]?.name || track.artist || track.subtitle || ''}</div>
             </div>
         `;
         div.onclick = () => { currentIndex = i; loadCurrentTrack(); };
@@ -2406,7 +2455,7 @@ window.setAccentColor = function(color) {
 }
 
 async function renderSettingsAbout() {
-    let currentVersion = 'v0.0.2';
+    let currentVersion = 'v0.0.3';
     if (window.electronAPI && window.electronAPI.getAppVersion) {
         try {
             const v = await window.electronAPI.getAppVersion();
@@ -2737,7 +2786,7 @@ setTimeout(() => {
         currentY = y;
         const diff = currentY - startY;
         if (diff > 0 && scrollContainer.scrollTop === 0) {
-            ptrIndicator.style.transform = 	ranslateY( + Math.min(diff - 60, 0) + px);
+            ptrIndicator.style.transform = `translateY(${Math.min(diff - 60, 0)}px)`;
             ptrIndicator.style.opacity = Math.min(diff / 60, 1);
             if (diff > 60) ptrIndicator.classList.add('ptr-refreshing');
             else ptrIndicator.classList.remove('ptr-refreshing');

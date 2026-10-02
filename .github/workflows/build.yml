@@ -1,17 +1,27 @@
-name: Build IceBeats Windows
+name: Build & Release IceBeats (Windows, Linux, macOS)
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (default 0.0.3)'
+        required: false
+        default: '0.0.3'
   push:
     tags:
+      - 'v*'
       - '*'
 
+permissions:
+  contents: write
+
 jobs:
+  # ==========================================
+  # WINDOWS BUILD (.exe - Setup & Portable)
+  # ==========================================
   build-windows:
-    name: Build Windows Executable (.exe)
+    name: Build Windows (.exe)
     runs-on: windows-latest
-    permissions:
-      contents: write
 
     steps:
     - name: Check out repository
@@ -34,7 +44,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pyinstaller
 
     - name: Build Python backend with PyInstaller
       run: |
@@ -47,15 +56,20 @@ jobs:
         cache: 'npm'
         cache-dependency-path: electron-app/package-lock.json
 
-    - name: Sync Version from Tag (if tagged)
-      if: startsWith(github.ref, 'refs/tags/')
+    - name: Sync Version in package.json
       shell: bash
       working-directory: ./electron-app
       run: |
-        TAG_NAME="${GITHUB_REF#refs/tags/}"
-        VERSION_NAME="${TAG_NAME#v}"
-        echo "Detected tag: $TAG_NAME, injecting version: $VERSION_NAME into package.json"
-        node -e "let pkg=require('./package.json'); pkg.version='$VERSION_NAME'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          VER="${{ github.event.inputs.version }}"
+        elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          TAG="${GITHUB_REF#refs/tags/}"
+          VER="${TAG#v}"
+        else
+          VER="0.0.3"
+        fi
+        echo "Syncing package.json version to: $VER"
+        node -e "let pkg=require('./package.json'); pkg.version='$VER'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
 
     - name: Install Node dependencies
       working-directory: ./electron-app
@@ -65,21 +79,200 @@ jobs:
       working-directory: ./electron-app
       run: npx electron-builder --win --publish never
 
-    - name: Upload Windows Artifacts (.exe)
+    - name: Upload Windows Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: IceBeats-Windows-EXE
+        name: IceBeats-Windows
         path: |
           electron-app/dist/*.exe
 
-    - name: Publish to GitHub Releases
-      uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+  # ==========================================
+  # LINUX BUILD (.AppImage & .deb)
+  # ==========================================
+  build-linux:
+    name: Build Linux (.AppImage & .deb)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libfuse2
+
+    - name: Inject Supabase & Env Config
+      run: |
+        echo "SUPABASE_URL=https://jiytrtynlucsbbjpbybr.supabase.co" > .env
+        echo "SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppeXRydHlubHVjc2JianBieWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDg4ODQsImV4cCI6MjEwNDk4NDg4NH0.BQQVZ8GghQqGIHPpUWx9n3VKc8Vqx0gQfDjYR2fEhDo" >> .env
+        echo "AUTH_API_BASE_URL=https://jiytrtynlucsbbjpbybr.supabase.co" >> .env
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v0.0.2' }}
-        name: IceBeats Desktop ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v0.0.2' }}
-        files: |
-          electron-app/dist/*.exe
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Python dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build Python backend with PyInstaller
+      run: |
+        pyinstaller --name server --onedir --noconsole --add-data "templates:templates" --add-data "static:static" --collect-data ytmusicapi -y app.py
+        chmod +x dist/server/server
+        cp dist/server/server dist/server/server.exe || true
+        chmod +x dist/server/server.exe || true
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: electron-app/package-lock.json
+
+    - name: Sync Version in package.json
+      working-directory: ./electron-app
+      run: |
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          VER="${{ github.event.inputs.version }}"
+        elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          TAG="${GITHUB_REF#refs/tags/}"
+          VER="${TAG#v}"
+        else
+          VER="0.0.3"
+        fi
+        echo "Syncing package.json version to: $VER"
+        node -e "let pkg=require('./package.json'); pkg.version='$VER'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+    - name: Install Node dependencies
+      working-directory: ./electron-app
+      run: npm install
+
+    - name: Build Linux AppImage & Deb
+      working-directory: ./electron-app
+      run: npx electron-builder --linux AppImage deb --publish never
+
+    - name: Upload Linux Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: IceBeats-Linux
+        path: |
+          electron-app/dist/*.AppImage
+          electron-app/dist/*.deb
+
+  # ==========================================
+  # MACOS BUILD (.dmg for MacBook)
+  # ==========================================
+  build-macos:
+    name: Build macOS (.dmg)
+    runs-on: macos-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Inject Supabase & Env Config
+      run: |
+        echo "SUPABASE_URL=https://jiytrtynlucsbbjpbybr.supabase.co" > .env
+        echo "SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppeXRydHlubHVjc2JianBieWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDg4ODQsImV4cCI6MjEwNDk4NDg4NH0.BQQVZ8GghQqGIHPpUWx9n3VKc8Vqx0gQfDjYR2fEhDo" >> .env
+        echo "AUTH_API_BASE_URL=https://jiytrtynlucsbbjpbybr.supabase.co" >> .env
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Python dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build Python backend with PyInstaller
+      run: |
+        pyinstaller --name server --onedir --noconsole --add-data "templates:templates" --add-data "static:static" --collect-data ytmusicapi -y app.py
+        chmod +x dist/server/server
+        cp dist/server/server dist/server/server.exe || true
+        chmod +x dist/server/server.exe || true
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: electron-app/package-lock.json
+
+    - name: Sync Version in package.json
+      working-directory: ./electron-app
+      run: |
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          VER="${{ github.event.inputs.version }}"
+        elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          TAG="${GITHUB_REF#refs/tags/}"
+          VER="${TAG#v}"
+        else
+          VER="0.0.3"
+        fi
+        echo "Syncing package.json version to: $VER"
+        node -e "let pkg=require('./package.json'); pkg.version='$VER'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+    - name: Install Node dependencies
+      working-directory: ./electron-app
+      run: npm install
+
+    - name: Build macOS DMG
+      working-directory: ./electron-app
+      env:
+        CSC_IDENTITY_AUTO_DISCOVERY: false
+      run: npx electron-builder --mac dmg --publish never
+
+    - name: Upload macOS Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: IceBeats-macOS
+        path: |
+          electron-app/dist/*.dmg
+
+  # ==========================================
+  # RELEASE JOB (Collects and publishes all)
+  # ==========================================
+  release:
+    name: Publish to GitHub Releases
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Download all build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: release-artifacts
+        merge-multiple: true
+
+    - name: List downloaded release files
+      run: ls -la release-artifacts
+
+    - name: Determine Tag & Release Name
+      id: release_meta
+      run: |
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          TAG="v${{ github.event.inputs.version }}"
+        elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          TAG="${GITHUB_REF#refs/tags/}"
+        else
+          TAG="v0.0.3"
+        fi
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+    - name: Create or Update GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.release_meta.outputs.tag }}
+        name: IceBeats Desktop ${{ steps.release_meta.outputs.tag }}
+        files: release-artifacts/*
         draft: false
         prerelease: false
         generate_release_notes: true

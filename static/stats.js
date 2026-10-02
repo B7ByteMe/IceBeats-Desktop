@@ -175,6 +175,7 @@
                     userId: userId,
                     name: name,
                     profileUrl: getUserAvatar(),
+                    email: localStorage.getItem('auth_email') || '',
                     deltaMs: ms
                 })
             });
@@ -332,17 +333,59 @@
         };
     };
 
+    // ==================== LOGIN TRIGGER HELPER ====================
+    window.triggerLoginModal = function() {
+        const overlay = document.getElementById('auth-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            if (typeof window.initQrLogin === 'function') {
+                window.initQrLogin();
+            }
+        }
+    };
+
     // ==================== RENDERING BACKEND RENDERED HTML ====================
     window.renderStatsProfile = async function() {
         const routerView = document.getElementById('router-view');
         if (!routerView) return;
 
+        const authState = localStorage.getItem('auth_state');
+        const isLoggedIn = authState === 'logged_in' && !window.isGuestMode;
+        const uid = getUserId();
+
+        if (!isLoggedIn || !uid) {
+            routerView.innerHTML = `
+                <div class="stats-profile-page">
+                    <div class="profile-header">
+                        <h2><i class="fas fa-user-circle" style="color:#1ed760; margin-right:12px;"></i>Profil Statistik</h2>
+                    </div>
+                    <div class="leaderboard-guest-card" style="text-align: center; padding: 50px 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; margin: 30px auto; max-width: 520px; box-shadow: 0 12px 30px rgba(0,0,0,0.3);">
+                        <div style="width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, rgba(30,215,96,0.2), rgba(0,242,254,0.2)); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; border: 1.5px solid rgba(30,215,96,0.4);">
+                            <i class="fas fa-lock" style="font-size: 32px; color: #1ed760;"></i>
+                        </div>
+                        <h3 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary, #ffffff);">Wajib Masuk Akun</h3>
+                        <p style="color: var(--text-secondary, #b3b3b3); font-size: 14px; line-height: 1.6; margin-bottom: 28px;">
+                            Statistik jam dengar, tier lencana musik, dan pencapaian tersimpan di akun Anda. Silakan hubungkan akun dengan scan QR dari aplikasi HP atau masuk akun Anda.
+                        </p>
+                        <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+                            <button class="stats-btn-primary" onclick="window.triggerLoginModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 26px; border-radius: 25px; font-weight: 600; cursor: pointer;">
+                                <i class="fas fa-qrcode"></i> Scan QR dari HP / Masuk
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
         try {
-            const res = await fetch(`/api/stats/profile_html?userId=${getUserId()}&name=${encodeURIComponent(getUserName())}&avatar=${encodeURIComponent(getUserAvatar())}&_t=${Date.now()}`);
+            const email = encodeURIComponent(localStorage.getItem('auth_email') || '');
+            const isGuest = window.isGuestMode || authState !== 'logged_in';
+            const res = await fetch(`/api/stats/profile_html?userId=${encodeURIComponent(uid)}&email=${email}&isGuest=${isGuest}&name=${encodeURIComponent(getUserName())}&avatar=${encodeURIComponent(getUserAvatar())}&_t=${Date.now()}`);
             const html = await res.text();
             routerView.innerHTML = html;
         } catch(e) {
-            routerView.innerHTML = `<div class="stats-error"><p>Failed to load profile stats. <button onclick="window.renderStatsProfile()">Retry</button></p></div>`;
+            routerView.innerHTML = `<div class="stats-error"><p>Gagal memuat profil statistik. <button onclick="window.renderStatsProfile()">Coba Lagi</button></p></div>`;
         }
     };
 
@@ -350,12 +393,50 @@
         const routerView = document.getElementById('router-view');
         if (!routerView) return;
 
+        const authState = localStorage.getItem('auth_state');
+        const isLoggedIn = authState === 'logged_in' && !window.isGuestMode;
+        const uid = getUserId();
+
+        if (!isLoggedIn || !uid) {
+            routerView.innerHTML = `
+                <div class="stats-leaderboard-page">
+                    <div class="leaderboard-header">
+                        <h2><i class="fas fa-trophy" style="color:#FFD700; margin-right:12px;"></i>Global Stats Leaderboard</h2>
+                    </div>
+                    <div class="leaderboard-guest-card" style="text-align: center; padding: 50px 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; margin: 30px auto; max-width: 520px; box-shadow: 0 12px 30px rgba(0,0,0,0.3);">
+                        <div style="width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(30,215,96,0.2)); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; border: 1.5px solid rgba(255,215,0,0.4);">
+                            <i class="fas fa-lock" style="font-size: 32px; color: #FFD700;"></i>
+                        </div>
+                        <h3 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary, #ffffff);">Wajib Masuk Akun</h3>
+                        <p style="color: var(--text-secondary, #b3b3b3); font-size: 14px; line-height: 1.6; margin-bottom: 28px;">
+                            Leaderboard dan peringkat jam dengar global hanya dapat dilihat oleh pengguna yang sudah masuk. Silakan hubungkan akun dengan scan QR dari aplikasi HP atau masuk akun Anda.
+                        </p>
+                        <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+                            <button class="stats-btn-primary" onclick="window.triggerLoginModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 26px; border-radius: 25px; font-weight: 600; cursor: pointer;">
+                                <i class="fas fa-qrcode"></i> Scan QR dari HP / Masuk
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        routerView.innerHTML = `
+            <div class="stats-loading" style="text-align:center; padding: 60px 20px;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="color: #1ed760; margin-bottom: 12px;"></i>
+                <p style="color: var(--text-secondary); margin-top: 10px;">Memuat peringkat global dari Supabase...</p>
+            </div>
+        `;
+
         try {
-            const res = await fetch(`/api/stats/leaderboard_html?userId=${getUserId()}&_t=${Date.now()}`);
+            const email = encodeURIComponent(localStorage.getItem('auth_email') || '');
+            const isGuest = window.isGuestMode || authState !== 'logged_in';
+            const res = await fetch(`/api/stats/leaderboard_html?userId=${encodeURIComponent(uid)}&email=${email}&isGuest=${isGuest}&_t=${Date.now()}`);
             const html = await res.text();
             routerView.innerHTML = html;
         } catch(e) {
-            routerView.innerHTML = `<div class="stats-error"><p>Failed to load global leaderboard. <button onclick="window.renderGlobalStats()">Retry</button></p></div>`;
+            routerView.innerHTML = `<div class="stats-error"><p>Gagal memuat leaderboard. <button onclick="window.renderGlobalStats()">Coba Lagi</button></p></div>`;
         }
     };
 

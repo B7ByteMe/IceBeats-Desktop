@@ -268,17 +268,12 @@ def shuffle_queue():
         print('Shuffle Error:', e)
         return jsonify({'success': False, 'shuffled': []}), 500
 
-# ==================== STATS CLOUD SYSTEM ====================
-# Mirrors Android's AirBeatsStatsCloudClient.kt exactly
-# ==================== SECURE SERVER-SIDE STATS CLOUD SYSTEM ====================
-# Connects to the same database as the Android app (database.ispro.in)
-# Zero database credentials or heavy business logic are exposed to the client.
+# ==================== STATS CLOUD SYSTEM (SUPABASE) ====================
+# Connects directly to Supabase user_stats table, matching the IceBeats Android App exactly!
 
-STATS_BASE_URL = os.environ.get("STATS_BASE_URL", "https://database.airbeats.app")
-STATS_API_KEY = os.environ.get("STATS_API_KEY", "DEFAULT_DEV_KEY")
-GLOBAL_STATS_FILE = os.environ.get("GLOBAL_STATS_FILE", "airbeats/global_stats.json")
-FCM_STATS_FILE = os.environ.get("FCM_STATS_FILE", "airbeats/fcm.json")
-MAX_GLOBAL_USERS = int(os.environ.get("MAX_GLOBAL_USERS", 10000000))
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://jiytrtynlucsbbjpbybr.supabase.co")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppeXRydHlubHVjc2JianBieWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDg4ODQsImV4cCI6MjEwNDk4NDg4NH0.BQQVZ8GghQqGIHPpUWx9n3VKc8Vqx0gQfDjYR2fEhDo")
+MAX_GLOBAL_USERS = int(os.environ.get("MAX_GLOBAL_USERS", 100))
 
 RANK_DEFINITIONS = [
     {"name": "Echo", "thresholdHours": 1, "colors": ["#00F2FE", "#4FACFE"]},
@@ -306,59 +301,69 @@ DICEBEAR_STYLES = [
     "lorelei", "micah", "miniavs", "open-peeps", "personas", "pixel-art", "shapes"
 ]
 
-def read_stats_board(file_name=GLOBAL_STATS_FILE):
-    """Read the global stats board from cloud (mirrors Android readBoard)"""
+def read_stats_board(file_name=None):
+    """Read the global stats board from Supabase user_stats table (matching Android app)"""
     try:
-        url = f"{STATS_BASE_URL}/read?file={file_name}&_t={int(time.time() * 1000)}"
-        headers = {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code == 404:
-            return {"users": [], "updatedAt": 0}
-        data = res.json()
-        board = data.get("data", data)
-        users = board.get("users", [])
-        # Normalize user fields
-        normalized = []
-        for u in users:
-            uid = u.get("id") or u.get("uuid", "")
-            if not uid:
-                continue
-            profile_url = u.get("profileUrl")
-            if profile_url and (not profile_url.strip() or profile_url.lower() == "null"):
-                profile_url = None
-            normalized.append({
-                "id": uid,
-                "name": u.get("name", "IceBeats User"),
-                "profileUrl": profile_url,
-                "totalListenMs": u.get("totalListenMs") or u.get("listenTime", 0),
-                "weeklyListenMs": u.get("weeklyListenMs", 0),
-                "lastUpdatedAt": u.get("lastUpdatedAt", 0),
-                "rank": u.get("rank", 0),
-            })
-        normalized.sort(key=lambda x: x["totalListenMs"], reverse=True)
-        normalized = normalized[:MAX_GLOBAL_USERS]
-        for i, u in enumerate(normalized):
-            u["rank"] = i + 1
-        return {"users": normalized, "updatedAt": board.get("updatedAt", 0)}
-    except Exception as e:
-        print(f"[STATS] Error reading board: {e}")
-        return {"users": [], "updatedAt": 0}
-
-def write_stats_board(file_name, board_json):
-    """Write the stats board to cloud (mirrors Android writeBoard)"""
-    try:
-        url = f"{STATS_BASE_URL}/write?file={file_name}"
+        url = f"{SUPABASE_URL}/rest/v1/user_stats?select=*&order=total_listen_ms.desc&limit={MAX_GLOBAL_USERS}"
         headers = {
-            'X-API-Key': STATS_API_KEY,
-            'Content-Type': 'application/json'
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': f'Bearer {SUPABASE_ANON_KEY}',
+            'Cache-Control': 'no-cache'
         }
-        res = requests.post(url, json=board_json, headers=headers, timeout=10)
-        if not res.ok:
-            print(f"[STATS] Write error: {res.status_code} {res.text[:200]}")
-            return False
-        return True
+        res = requests.get(url, headers=headers, timeout=8)
+        if res.ok:
+            rows = res.json()
+            normalized = []
+            for u in rows:
+                uid = u.get("id") or ""
+                # Skip invalid or dummy test hacker row
+                if not uid or uid == "00000000-0000-0000-0000-000000000000":
+                    continue
+                profile_url = u.get("profile_url")
+                if profile_url and (not profile_url.strip() or profile_url.lower() == "null"):
+                    profile_url = None
+                normalized.append({
+                    "id": uid,
+                    "name": u.get("name") or "IceBeats Listener",
+                    "email": u.get("email") or "",
+                    "profileUrl": profile_url,
+                    "totalListenMs": int(u.get("total_listen_ms") or 0),
+                    "weeklyListenMs": int(u.get("weekly_listen_ms") or 0),
+                    "lastUpdatedAt": int(u.get("last_updated_at") or 0),
+                    "rank": 0,
+                })
+            normalized.sort(key=lambda x: x["totalListenMs"], reverse=True)
+            for i, u in enumerate(normalized):
+                u["rank"] = i + 1
+            return {"users": normalized, "updatedAt": int(time.time() * 1000)}
     except Exception as e:
-        print(f"[STATS] Write exception: {e}")
+        print(f"[STATS] Error reading user_stats from Supabase: {e}")
+    return {"users": [], "updatedAt": 0}
+
+def write_user_stat(user_id, name, profile_url=None, email=None, total_ms=0, weekly_ms=0):
+    """Upsert user stats to Supabase user_stats table"""
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/user_stats?on_conflict=id"
+        headers = {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': f'Bearer {SUPABASE_ANON_KEY}',
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+        }
+        payload = {
+            "id": user_id,
+            "name": name,
+            "profile_url": profile_url,
+            "total_listen_ms": total_ms,
+            "weekly_listen_ms": weekly_ms,
+            "last_updated_at": int(time.time() * 1000)
+        }
+        if email:
+            payload["email"] = email
+        res = requests.post(url, json=payload, headers=headers, timeout=8)
+        return res.ok
+    except Exception as e:
+        print(f"[STATS] Error writing to Supabase user_stats: {e}")
         return False
 
 def get_rank_from_hours(hours):
@@ -459,24 +464,24 @@ def stats_onboard():
 
 @app.route('/api/stats/listen', methods=['POST'])
 def stats_listen():
-    """Accumulates user listen duration on the backend, updating the cloud DB directly"""
+    """Accumulates user listen duration on the backend, updating Supabase user_stats directly"""
     try:
         data = request.json or {}
         user_id = data.get('userId', '')
         name = data.get('name', 'IceBeats User')
         profile_url = data.get('profileUrl')
+        email = data.get('email') or None
         delta_ms = max(data.get('deltaMs', 0), 0)
 
         if not user_id:
             return jsonify({"error": "Missing userId"}), 400
 
-        # Read current cloud board
-        board = read_stats_board(GLOBAL_STATS_FILE)
-        fcm_board = read_stats_board(FCM_STATS_FILE)
+        # Read current cloud board from Supabase
+        board = read_stats_board()
         now = int(time.time() * 1000)
 
         # Find existing user info
-        user_obj = next((u for u in board["users"] if u["id"] == user_id), None)
+        user_obj = next((u for u in board["users"] if u["id"] == user_id or (email and u.get("email") and u.get("email").lower() == email.lower())), None)
         
         client_total_ms = data.get('totalListenMs', -1)
         if client_total_ms == -1:
@@ -485,10 +490,8 @@ def stats_listen():
         old_total = user_obj["totalListenMs"] if user_obj else 0
         old_weekly = user_obj["weeklyListenMs"] if user_obj else 0
         
-        # 2-Way Sync logic: if client has more than cloud (or cloud more than client)
-        # we always take the maximum to prevent losing listen time (downgrades).
+        # 2-Way Sync logic: take maximum
         true_total = max(old_total, client_total_ms) if client_total_ms >= 0 else old_total
-        
         new_total = true_total + delta_ms
         new_weekly = old_weekly + delta_ms
 
@@ -503,60 +506,11 @@ def stats_listen():
         if new_rank and (not old_rank or new_rank["name"] != old_rank["name"]):
             rank_up = True
 
-        # Re-build users lists with updated user
-        updated_users = [u for u in board["users"] if u["id"] != user_id]
-        updated_users.append({
-            "id": user_id,
-            "name": name,
-            "profileUrl": profile_url,
-            "totalListenMs": new_total,
-            "weeklyListenMs": new_weekly,
-            "lastUpdatedAt": now,
-            "rank": 0
-        })
-        updated_users.sort(key=lambda x: x["totalListenMs"], reverse=True)
-        updated_users = updated_users[:MAX_GLOBAL_USERS]
-        for i, u in enumerate(updated_users):
-            u["rank"] = i + 1
-
-        user_global_rank = next((u["rank"] for u in updated_users if u["id"] == user_id), 999)
-
-        # Update FCM board
-        fcm_users = [u for u in fcm_board["users"] if u["id"] != user_id]
-        fcm_users.append({
-            "id": user_id,
-            "name": name,
-            "profileUrl": None,
-            "totalListenMs": new_total,
-            "weeklyListenMs": 0,
-            "lastUpdatedAt": now,
-            "rank": user_global_rank,
-        })
-        fcm_users.sort(key=lambda x: x["totalListenMs"], reverse=True)
-        fcm_users = fcm_users[:MAX_GLOBAL_USERS]
-
-        global_json = {
-            "service": "AirBeats Global Stats",
-            "folder": "airbeats",
-            "updatedAt": now,
-            "users": updated_users
-        }
-        fcm_json = {
-            "service": "AirBeats FCM Stats",
-            "folder": "airbeats",
-            "updatedAt": now,
-            "users": [{
-                "uuid": u["id"],
-                "name": u["name"],
-                "fcmToken": None,
-                "listenTime": u["totalListenMs"],
-                "rank": u["rank"],
-            } for u in fcm_users]
-        }
-
-        # Write to cloud
-        write_stats_board(GLOBAL_STATS_FILE, global_json)
-        write_stats_board(FCM_STATS_FILE, fcm_json)
+        # Upsert directly to Supabase user_stats
+        user_email = email or (user_obj.get("email") if user_obj else None)
+        user_avatar = profile_url or (user_obj.get("profileUrl") if user_obj else None)
+        user_name = name or (user_obj.get("name") if user_obj else "IceBeats User")
+        write_user_stat(user_id, user_name, user_avatar, user_email, new_total, new_weekly)
 
         return jsonify({
             "success": True,
@@ -719,11 +673,36 @@ def stats_profile_html():
     """Generates and returns premium pre-rendered HTML for settings/profile"""
     try:
         user_id = request.args.get('userId', '')
+        user_email = request.args.get('email', '')
         client_name = request.args.get('name', 'IceBeats User')
         client_avatar = request.args.get('avatar', '')
-        
-        board = read_stats_board(GLOBAL_STATS_FILE)
-        user_obj = next((u for u in board["users"] if u["id"] == user_id), None)
+        is_guest = request.args.get('isGuest', 'false').lower() == 'true'
+
+        if is_guest or not user_id:
+            return """
+            <div class="stats-profile-page">
+                <div class="profile-header">
+                    <h2><i class="fas fa-user-circle" style="color:#1ed760; margin-right:12px;"></i>Profil Statistik</h2>
+                </div>
+                <div class="leaderboard-guest-card" style="text-align: center; padding: 50px 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; margin: 30px auto; max-width: 520px; box-shadow: 0 12px 30px rgba(0,0,0,0.3);">
+                    <div style="width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, rgba(30,215,96,0.2), rgba(0,242,254,0.2)); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; border: 1.5px solid rgba(30,215,96,0.4);">
+                        <i class="fas fa-lock" style="font-size: 32px; color: #1ed760;"></i>
+                    </div>
+                    <h3 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary, #ffffff);">Wajib Masuk Akun</h3>
+                    <p style="color: var(--text-secondary, #b3b3b3); font-size: 14px; line-height: 1.6; margin-bottom: 28px;">
+                        Statistik jam dengar, tier lencana musik, dan pencapaian tersimpan di akun Anda. Silakan hubungkan akun dengan scan QR dari aplikasi HP atau masuk akun Anda.
+                    </p>
+                    <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+                        <button class="stats-btn-primary" onclick="window.triggerLoginModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 26px; border-radius: 25px; font-weight: 600; cursor: pointer;">
+                            <i class="fas fa-qrcode"></i> Scan QR dari HP / Masuk
+                        </button>
+                    </div>
+                </div>
+            </div>
+            """
+
+        board = read_stats_board()
+        user_obj = next((u for u in board["users"] if u["id"] == user_id or (user_email and u.get("email") and u.get("email").lower() == user_email.lower())), None)
 
         name = user_obj["name"] if user_obj else client_name
         profile_url = user_obj["profileUrl"] if user_obj and user_obj.get("profileUrl") else client_avatar
@@ -863,18 +842,44 @@ def stats_profile_html():
 
 @app.route('/api/stats/leaderboard_html')
 def stats_leaderboard_html():
-    """Generates and returns premium pre-rendered HTML for the leaderboard"""
+    """Generates and returns premium pre-rendered HTML for the leaderboard from Supabase user_stats"""
     try:
         user_id = request.args.get('userId', '')
-        board = read_stats_board(GLOBAL_STATS_FILE)
+        user_email = request.args.get('email', '')
+        is_guest = request.args.get('isGuest', 'false').lower() == 'true'
+
+        if is_guest or not user_id:
+            return """
+            <div class="stats-leaderboard-page">
+                <div class="leaderboard-header">
+                    <h2><i class="fas fa-trophy" style="color:#FFD700; margin-right:12px;"></i>Global Stats Leaderboard</h2>
+                </div>
+                <div class="leaderboard-guest-card" style="text-align: center; padding: 50px 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; margin: 30px auto; max-width: 520px; box-shadow: 0 12px 30px rgba(0,0,0,0.3);">
+                    <div style="width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(30,215,96,0.2)); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; border: 1.5px solid rgba(255,215,0,0.4);">
+                        <i class="fas fa-lock" style="font-size: 32px; color: #FFD700;"></i>
+                    </div>
+                    <h3 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary, #ffffff);">Wajib Masuk Akun</h3>
+                    <p style="color: var(--text-secondary, #b3b3b3); font-size: 14px; line-height: 1.6; margin-bottom: 28px;">
+                        Leaderboard dan peringkat jam dengar global hanya dapat dilihat oleh pengguna yang sudah masuk. Silakan hubungkan akun dengan scan QR dari aplikasi HP atau masuk akun Anda.
+                    </p>
+                    <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+                        <button class="stats-btn-primary" onclick="window.triggerLoginModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 26px; border-radius: 25px; font-weight: 600; cursor: pointer;">
+                            <i class="fas fa-qrcode"></i> Scan QR dari HP / Masuk
+                        </button>
+                    </div>
+                </div>
+            </div>
+            """
+
+        board = read_stats_board()
         users = board["users"]
 
-        my_user = next((u for u in users if u["id"] == user_id), None)
+        my_user = next((u for u in users if u["id"] == user_id or (user_email and u.get("email") and u.get("email").lower() == user_email.lower())), None)
         top_user = users[0] if users else None
 
         users_rows_html = ""
         for u in users:
-            is_me = u["id"] == user_id
+            is_me = (u["id"] == user_id) or (user_email and u.get("email") and u.get("email").lower() == user_email.lower())
             row_class = "leaderboard-row is-me" if is_me else "leaderboard-row"
             
             hrs = u["totalListenMs"] / 3600000.0

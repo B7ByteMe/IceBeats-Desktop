@@ -1,11 +1,14 @@
 {
     "name": "icebeats",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "IceBeats Desktop App",
     "main": "main.js",
     "scripts": {
         "start": "electron .",
-        "build": "electron-builder --win"
+        "build": "electron-builder --win",
+        "build-win": "electron-builder --win",
+        "build-linux": "electron-builder --linux",
+        "build-mac": "electron-builder --mac"
     },
     "build": {
         "appId": "com.valora.icebeats",
@@ -60,8 +63,7 @@
         "linux": {
             "target": [
                 "AppImage",
-                "deb",
-                "snap"
+                "deb"
             ],
             "icon": "icon.png"
         },
@@ -70,10 +72,6 @@
         },
         "deb": {
             "artifactName": "IceBeats-v${version}-linux.${ext}"
-        },
-        "snapcraft": {
-            "artifactName": "IceBeats-v${version}-linux.${ext}",
-            "base": "core22"
         }
     },
     "keywords": [],
