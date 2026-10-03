@@ -2457,7 +2457,7 @@ window.setAccentColor = function(color) {
 }
 
 async function renderSettingsAbout() {
-    let currentVersion = 'v0.0.3';
+    let currentVersion = 'v0.0.4';
     if (window.electronAPI && window.electronAPI.getAppVersion) {
         try {
             const v = await window.electronAPI.getAppVersion();

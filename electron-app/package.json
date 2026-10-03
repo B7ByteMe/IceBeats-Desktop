@@ -1,6 +1,6 @@
 {
     "name": "icebeats",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "IceBeats Desktop App",
     "main": "main.js",
     "scripts": {

@@ -1,5 +1,5 @@
 import requests
-from flask import Flask, render_template, Response, request, jsonify, redirect
+from flask import Flask, render_template, Response, request, jsonify, redirect, send_from_directory
 import xml.etree.ElementTree as ET
 import re
 import math
@@ -30,9 +30,17 @@ else:
 def index():
     return render_template('index.html')
 
+@app.route('/landing')
+@app.route('/download')
+@app.route('/releases')
 @app.route('/mobile')
-def mobile():
-    return render_template('mobile.html')
+def landing():
+    return render_template('landing.html')
+
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    uploads_dir = os.path.join(os.path.dirname(__file__), 'uploads')
+    return send_from_directory(uploads_dir, filename)
 
 # ==========================================
 # GOOGLE OAUTH VIA DEFAULT BROWSER (CHROME)
