@@ -497,14 +497,31 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Google Sign-In setup via Default Browser (Chrome)
+    // Google Sign-In setup via Website & Cloud Sync (https://icebeats.pages.dev)
     let googleBrowserPollInterval = null;
 
     if (btnGoogle) {
-        btnGoogle.addEventListener('click', () => {
-            const loginUrl = 'http://127.0.0.1:8000/auth/google/login';
+        btnGoogle.addEventListener('click', async () => {
+            const sessionToken = `ib_g_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
             
-            // Open in external default browser (Chrome)
+            // 1. Register pending session to Supabase
+            try {
+                await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions`, {
+                    method: 'POST',
+                    headers: getSupabaseHeaders(),
+                    body: JSON.stringify({
+                        id: sessionToken,
+                        status: "pending",
+                        created_at: new Date().toISOString(),
+                        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+                    })
+                });
+            } catch (err) {
+                console.warn('Failed to publish Google session to Supabase', err);
+            }
+
+            // 2. Open official website login link in external browser
+            const loginUrl = `https://icebeats.pages.dev/auth/login?session=${encodeURIComponent(sessionToken)}`;
             if (window.electronAPI && window.electronAPI.openExternal) {
                 window.electronAPI.openExternal(loginUrl);
             } else {
@@ -517,23 +534,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (googleBrowserPollInterval) clearInterval(googleBrowserPollInterval);
 
-            // Poll local backend for successful authentication session
+            // 3. Poll Supabase Cloud and local server for completed session
             googleBrowserPollInterval = setInterval(async () => {
                 try {
-                    const res = await fetch('/api/auth/session');
-                    const json = await res.json();
+                    let s = null;
+
+                    // Priority A: Poll Supabase cloud table
+                    try {
+                        const supaRes = await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions?id=eq.${encodeURIComponent(sessionToken)}&select=*`, {
+                            headers: getSupabaseHeaders()
+                        });
+                        const supaRows = await supaRes.json();
+                        if (Array.isArray(supaRows) && supaRows.length > 0 && supaRows[0].status === 'completed' && supaRows[0].user_data) {
+                            s = supaRows[0].user_data;
+                        }
+                    } catch (e) {}
+
+                    // Priority B: Fallback to local server session
+                    if (!s) {
+                        try {
+                            const res = await fetch('/api/auth/session');
+                            const json = await res.json();
+                            if (json && json.logged_in && json.session) {
+                                s = json.session;
+                            }
+                        } catch (e) {}
+                    }
                     
-                    if (json && json.logged_in && json.session) {
+                    if (s) {
                         clearInterval(googleBrowserPollInterval);
                         googleBrowserPollInterval = null;
 
-                        const s = json.session;
-                        const uid = s.uid || 'g_' + s.email.replace(/[^a-zA-Z0-9]/g, '_');
-                        const name = s.name || s.email.split('@')[0];
+                        const uid = s.uid || 'g_' + (s.email || 'user').replace(/[^a-zA-Z0-9]/g, '_');
+                        const name = s.name || (s.email ? s.email.split('@')[0] : 'User');
                         const avatar = s.avatar || '';
 
                         localStorage.setItem('auth_state', 'logged_in');
-                        localStorage.setItem('auth_email', s.email);
+                        if (s.email) localStorage.setItem('auth_email', s.email);
                         localStorage.setItem('icebeats_user_id', uid);
                         localStorage.setItem('airbeats_user_id', uid);
                         localStorage.setItem('icebeats_user_name', name);

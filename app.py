@@ -5,6 +5,7 @@ import re
 import math
 import random
 import uuid
+import time
 
 import os
 import sys
@@ -215,24 +216,36 @@ def auth_callback():
 </body>
 </html>'''
 
-@app.route('/api/auth/session', methods=['GET', 'POST'])
+@app.route('/api/auth/session', methods=['GET', 'POST', 'OPTIONS'])
 def api_auth_session():
     global _external_auth_sessions
     import time
+    if request.method == 'OPTIONS':
+        resp = jsonify({'status': 'ok'})
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = '*'
+        return resp
+
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         _external_auth_sessions['latest'] = {
             'timestamp': time.time(),
             'data': data
         }
-        return jsonify({'success': True})
+        resp = jsonify({'success': True})
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
     else:
         sess = _external_auth_sessions.get('latest')
         if sess and (time.time() - sess['timestamp']) < 300:
             data = sess['data']
             _external_auth_sessions.pop('latest', None)
-            return jsonify({'success': True, 'logged_in': True, 'session': data})
-        return jsonify({'success': True, 'logged_in': False})
+            resp = jsonify({'success': True, 'logged_in': True, 'session': data})
+        else:
+            resp = jsonify({'success': True, 'logged_in': False})
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
 
 
 
@@ -436,29 +449,8 @@ def stats_onboard():
         user_id = str(uuid.uuid4())
         avatar_url = f"https://api.dicebear.com/7.x/{style}/png?seed={seed}&size=200"
 
-        # Register immediately in cloud stats with 0 time
-        board = read_stats_board(GLOBAL_STATS_FILE)
-        fcm_board = read_stats_board(FCM_STATS_FILE)
-        now = int(time.time() * 1000)
-
-        # Append new user to global list
-        users_list = [u for u in board["users"] if u["id"] != user_id]
-        users_list.append({
-            "id": user_id,
-            "name": name,
-            "profileUrl": avatar_url,
-            "totalListenMs": 0,
-            "weeklyListenMs": 0,
-            "lastUpdatedAt": now,
-            "rank": len(users_list) + 1,
-        })
-        global_json = {
-            "service": "AirBeats Global Stats",
-            "folder": "airbeats",
-            "updatedAt": now,
-            "users": users_list
-        }
-        write_stats_board(GLOBAL_STATS_FILE, global_json)
+        # Register immediately in Supabase cloud stats with 0 time
+        write_user_stat(user_id, name, avatar_url, None, 0, 0)
 
         return jsonify({
             "success": True,
@@ -543,37 +535,14 @@ def stats_update_profile():
         if not user_id or not name:
             return jsonify({"error": "Missing params"}), 400
 
-        board = read_stats_board(GLOBAL_STATS_FILE)
-        now = int(time.time() * 1000)
-
+        board = read_stats_board()
         user_obj = next((u for u in board["users"] if u["id"] == user_id), None)
-        if user_obj:
-            user_obj["name"] = name
-            if profile_url:
-                user_obj["profileUrl"] = profile_url
-            user_obj["lastUpdatedAt"] = now
-        else:
-            board["users"].append({
-                "id": user_id,
-                "name": name,
-                "profileUrl": profile_url,
-                "totalListenMs": 0,
-                "weeklyListenMs": 0,
-                "lastUpdatedAt": now,
-                "rank": 0
-            })
-            
-        board["users"].sort(key=lambda x: x["totalListenMs"], reverse=True)
-        for i, u in enumerate(board["users"]):
-            u["rank"] = i + 1
-        
-        global_json = {
-            "service": "AirBeats Global Stats",
-            "folder": "airbeats",
-            "updatedAt": now,
-            "users": board["users"]
-        }
-        write_stats_board(GLOBAL_STATS_FILE, global_json)
+        total_ms = user_obj["totalListenMs"] if user_obj else 0
+        weekly_ms = user_obj["weeklyListenMs"] if user_obj else 0
+        user_email = user_obj.get("email") if user_obj else None
+        user_avatar = profile_url or (user_obj.get("profileUrl") if user_obj else None)
+
+        write_user_stat(user_id, name, user_avatar, user_email, total_ms, weekly_ms)
 
         return jsonify({"success": True})
     except Exception as e:

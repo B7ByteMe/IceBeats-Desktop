@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceBeats - Login Berhasil</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080808;
+            --bg-card: #111111;
+            --accent: #b3ff00;
+            --accent-glow: rgba(179, 255, 0, 0.25);
+            --text-primary: #f0ead6;
+            --text-secondary: #8a8070;
+            --border: rgba(240, 234, 214, 0.08);
+            --border-accent: rgba(179, 255, 0, 0.3);
+            --font-body: 'Outfit', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Subtle grid background */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                linear-gradient(90deg, rgba(179, 255, 0, 0.02) 1px, transparent 1px),
+                linear-gradient(rgba(179, 255, 0, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        /* Glow effect */
+        .bg-glow {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(179, 255, 0, 0.08) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            filter: blur(50px);
+        }
+
+        .auth-card {
+            position: relative;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 440px;
+            width: 100%;
+            padding: 40px 32px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(179, 255, 0, 0.06);
+            z-index: 10;
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+
+        .brand-logo {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            margin: 0 auto 16px;
+            filter: drop-shadow(0 0 16px rgba(179, 255, 0, 0.3));
+        }
+
+        .logo-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 24px;
+            color: var(--text-primary);
+        }
+
+        .logo-title span {
+            color: var(--accent);
+        }
+
+        /* Status circle indicator */
+        .status-circle {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(179, 255, 0, 0.08);
+            border: 2px solid var(--border-accent);
+            position: relative;
+            transition: all 0.4s ease;
+        }
+
+        .status-circle.success {
+            border-color: var(--accent);
+            background: rgba(179, 255, 0, 0.15);
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .status-circle.error {
+            border-color: #ff4757;
+            background: rgba(255, 71, 87, 0.15);
+            box-shadow: 0 0 30px rgba(255, 71, 87, 0.3);
+        }
+
+        .status-icon {
+            font-size: 40px;
+            color: var(--accent);
+            transition: all 0.3s ease;
+        }
+
+        .status-circle.error .status-icon {
+            color: #ff4757;
+        }
+
+        .anim-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .status-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .status-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        /* User preview pill */
+        .user-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(240, 234, 214, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 6px 16px 6px 8px;
+            margin-bottom: 24px;
+            max-width: 100%;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid var(--accent);
+        }
+
+        .user-info {
+            text-align: left;
+            overflow: hidden;
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+
+        .user-email {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+
+        /* Action buttons */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: var(--font-body);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: #080808;
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            background-color: #c8ff1a;
+            box-shadow: 0 0 24px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            color: var(--text-primary);
+            border-color: var(--border-accent);
+        }
+
+        .countdown-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 18px;
+        }
+
+        .countdown-text span {
+            color: var(--accent);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="auth-card">
+        <img src="../icebeats_logo.png" alt="IceBeats" class="brand-logo" onerror="this.style.display='none'">
+        <div class="logo-title">Ice<span>Beats</span></div>
+
+        <div class="status-circle" id="statusCircle">
+            <span class="material-symbols-outlined status-icon anim-spin" id="statusIcon">sync</span>
+        </div>
+
+        <h2 class="status-title" id="statusTitle">Memverifikasi Akun...</h2>
+        <p class="status-subtitle" id="statusSubtitle">Mohon tunggu sebentar, sedang menyinkronkan data login Anda ke IceBeats Desktop.</p>
+
+        <!-- User Profile Preview (hidden by default) -->
+        <div class="user-pill" id="userPill" style="display: none;">
+            <img src="" alt="" class="user-avatar" id="userAvatar">
+            <div class="user-info">
+                <div class="user-name" id="userName">-</div>
+                <div class="user-email" id="userEmail">-</div>
+            </div>
+        </div>
+
+        <div class="btn-group" id="btnGroup" style="display: none;">
+            <button class="btn btn-primary" onclick="window.close()" id="btnCloseTab">
+                <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+                <span>Tutup Jendela Ini</span>
+            </button>
+            <a href="icebeats://" class="btn btn-secondary" id="btnOpenApp">
+                <span class="material-symbols-outlined" style="font-size: 18px;">open_in_new</span>
+                <span>Kembali ke IceBeats</span>
+            </a>
+        </div>
+
+        <div class="countdown-text" id="countdownText" style="display: none;">
+            Jendela ini dapat ditutup, atau otomatis tertutup dalam <span id="countdownSec">5</span> detik.
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://jiytrtynlucsbbjpbybr.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppeXRydHlubHVjc2JianBieWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDg4ODQsImV4cCI6MjEwNDk4NDg4NH0.BQQVZ8GghQqGIHPpUWx9n3VKc8Vqx0gQfDjYR2fEhDo";
+
+        async function processAuth() {
+            const statusCircle = document.getElementById('statusCircle');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusSubtitle = document.getElementById('statusSubtitle');
+            const userPill = document.getElementById('userPill');
+            const userAvatar = document.getElementById('userAvatar');
+            const userName = document.getElementById('userName');
+            const userEmail = document.getElementById('userEmail');
+            const btnGroup = document.getElementById('btnGroup');
+            const countdownText = document.getElementById('countdownText');
+            const countdownSec = document.getElementById('countdownSec');
+
+            try {
+                // 1. Extract tokens from Hash or Query
+                const hash = window.location.hash.substring(1);
+                const hashParams = new URLSearchParams(hash);
+                const queryParams = new URLSearchParams(window.location.search);
+
+                let accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+                let refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+                let sessionToken = queryParams.get('session') || hashParams.get('session') || localStorage.getItem('icebeats_pending_session');
+                const code = queryParams.get('code') || hashParams.get('code');
+                const error = hashParams.get('error_description') || queryParams.get('error_description') || hashParams.get('error') || queryParams.get('error');
+
+                if (error) {
+                    throw new Error(decodeURIComponent(error));
+                }
+
+                // If code is returned, exchange for token
+                if (!accessToken && code) {
+                    const tokenRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=authorization_code`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ auth_code: code })
+                    });
+                    const tokenData = await tokenRes.json();
+                    if (tokenData && tokenData.access_token) {
+                        accessToken = tokenData.access_token;
+                        refreshToken = tokenData.refresh_token;
+                    }
+                }
+
+                if (!accessToken) {
+                    throw new Error("Token otentikasi tidak ditemukan. Silakan coba login kembali.");
+                }
+
+                // 2. Fetch User Profile
+                const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                const user = await userRes.json();
+                if (!user || !user.email) {
+                    throw new Error("Gagal mengambil data profil pengguna dari server.");
+                }
+
+                const uid = user.id || 'g_' + user.email.replace(/[^a-zA-Z0-9]/g, '_');
+                const meta = user.user_metadata || {};
+                const name = meta.full_name || meta.name || user.email.split('@')[0];
+                const avatar = meta.avatar_url || meta.picture || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(uid)}`;
+
+                // Show User Profile Preview
+                userAvatar.src = avatar;
+                userName.textContent = name;
+                userEmail.textContent = user.email;
+                userPill.style.display = 'inline-flex';
+
+                // 3. Sync to Supabase Cloud Session (so Desktop receives it instantly via Supabase)
+                const sessionPayload = {
+                    uid: uid,
+                    email: user.email,
+                    name: name,
+                    avatar: avatar,
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                };
+
+                if (sessionToken) {
+                    // Update the specific session in SQL
+                    try {
+                        await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions?id=eq.${encodeURIComponent(sessionToken)}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=minimal'
+                            },
+                            body: JSON.stringify({
+                                status: "completed",
+                                user_data: sessionPayload
+                            })
+                        });
+                    } catch (e) {
+                        console.warn("Failed to patch session row", e);
+                    }
+                }
+
+                // 4. Also try sending directly to local desktop server (127.0.0.1:8000)
+                try {
+                    await fetch('http://127.0.0.1:8000/api/auth/session', {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(sessionPayload)
+                    });
+                } catch (e) {
+                    // Local server might be on another origin or direct polling via Supabase
+                }
+
+                // 5. Update UI to Success State
+                statusCircle.classList.remove('error');
+                statusCircle.classList.add('success');
+                statusIcon.classList.remove('anim-spin');
+                statusIcon.textContent = 'check_circle';
+                statusTitle.textContent = 'Login Berhasil!';
+                statusSubtitle.textContent = `Selamat datang kembali, ${name}! Akun Anda telah berhasil terhubung ke aplikasi IceBeats Desktop.`;
+                btnGroup.style.display = 'flex';
+                countdownText.style.display = 'block';
+
+                // Auto Countdown to close tab
+                let timeLeft = 5;
+                const timer = setInterval(() => {
+                    timeLeft--;
+                    countdownSec.textContent = timeLeft;
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        window.close();
+                    }
+                }, 1000);
+
+            } catch (err) {
+                console.error("Auth callback error:", err);
+                statusCircle.classList.remove('success');
+                statusCircle.classList.add('error');
+                statusIcon.classList.remove('anim-spin');
+                statusIcon.textContent = 'error';
+                statusTitle.textContent = 'Gagal Masuk';
+                statusSubtitle.textContent = err.message || 'Terjadi kesalahan saat memproses otentikasi akun.';
+                btnGroup.style.display = 'flex';
+                document.getElementById('btnCloseTab').textContent = 'Tutup Jendela';
+            }
+        }
+
+        // Run when DOM is ready
+        window.addEventListener('DOMContentLoaded', processAuth);
+    </script>
+</body>
+</html>
