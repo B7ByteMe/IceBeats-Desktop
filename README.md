@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/B7ByteMe/IceBeats-Desktop/main/electron-app/icon.png" width="140" alt="IceBeats Logo" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);" />
+<img src="static/img/icon.png" width="140" alt="IceBeats Logo" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);" />
 
 # IceBeats Desktop
 
@@ -45,46 +45,34 @@ IceBeats Desktop is a fast, lightweight, and modern music streaming client for W
 
 ---
 
-## Installation
+## Screenshots
 
-### Windows 10 / 11
-
-1. Download the latest installer from the [Releases](https://github.com/B7ByteMe/IceBeats-Desktop/releases) page.
-2. Run `IceBeats-Setup.exe` and follow the on-screen instructions.
-3. Launch IceBeats from your Desktop or Start Menu shortcut.
+<div align="center">
+  <img src="static/img/home.png" width="90%" alt="IceBeats Home Screen" style="border-radius: 12px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+  <br><br>
+  <img src="static/img/lyrics.png" width="90%" alt="Synchronized Lyrics" style="border-radius: 12px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+  <br><br>
+  <img src="static/img/artist.png" width="90%" alt="Artist Profile" style="border-radius: 12px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+  <br><br>
+  <img src="static/img/dynamic_island.png" width="90%" alt="Dynamic Island Mini Player" style="border-radius: 12px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+</div>
 
 ---
 
-## Build from Source
+## Downloads & Installation
 
-### Prerequisites
+Download the latest version from the **[Releases](https://github.com/B7ByteMe/IceBeats-Desktop/releases)** page:
 
-- Node.js (v18 or higher)
-- Python (v3.10 or higher)
-- Git
+### 🪟 Windows (10 / 11)
+- **Installer:** Download `IceBeats-v0.0.5-setup.exe` and follow the setup wizard.
+- **Portable:** Download `IceBeats-v0.0.5-portable.exe` to run directly without installation.
 
-### Build Steps
+### 🐧 Linux
+- **AppImage:** Download `IceBeats-v0.0.5-linux.AppImage`, make it executable (`chmod +x`), and run.
+- **Debian / Ubuntu:** Download `IceBeats-v0.0.5-linux.deb` and install via `sudo dpkg -i`.
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/B7ByteMe/IceBeats-Desktop.git
-cd IceBeats-Desktop
-
-# 2. Setup Python environment
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-
-# 3. Setup Electron app
-cd electron-app
-npm install
-
-# 4. Run in development mode
-npm start
-
-# 5. Build executable package
-npm run build
-```
+### 🍎 macOS
+- **Apple Disk Image:** Download `IceBeats-v0.0.5-mac.dmg`, open it, and drag IceBeats into your Applications folder.
 
 ---
 
