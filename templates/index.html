@@ -250,16 +250,17 @@
         }
         .onboarding-slide {
             position: absolute;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
             text-align: center; opacity: 0; pointer-events: none;
-            z-index: 1; width: 100%; max-width: 640px; padding: 48px 40px 90px;
+            z-index: 2; width: 100%; max-width: 640px; padding: 48px 40px 90px;
         }
         .onboarding-slide.active {
-            opacity: 1; pointer-events: auto;
-            animation: obFadeUp 0.9s cubic-bezier(0.16,1,0.3,1) forwards;
+            display: flex !important;
+            opacity: 1 !important; pointer-events: auto !important;
+            animation: obFadeUp 0.6s cubic-bezier(0.16,1,0.3,1) forwards;
         }
         .onboarding-slide.exit {
-            animation: obFadeOut 0.55s cubic-bezier(0.4,0,0.2,1) forwards;
+            animation: obFadeOut 0.4s cubic-bezier(0.4,0,0.2,1) forwards;
         }
         .ob-logo-wrap {
             width: 128px; height: 128px; border-radius: 34px;
@@ -314,11 +315,17 @@
         .ob-hl-label { color: #fff; font-size: 14px; font-weight: 600; }
         .ob-hl-sub   { color: rgba(255,255,255,0.45); font-size: 12px; margin-top: 4px; }
         .ob-btn {
+            position: relative !important;
+            z-index: 20 !important;
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            user-select: none;
+            -webkit-user-select: none;
             background: rgba(255,255,255,0.08); color: white;
             border: 1px solid rgba(255,255,255,0.18);
             padding: 15px 48px; border-radius: 100px;
-            font-size: 15px; font-weight: 600; cursor: pointer;
-            transition: all 0.3s ease; font-family: 'Inter', sans-serif;
+            font-size: 15px; font-weight: 600;
+            transition: all 0.25s ease; font-family: 'Inter', sans-serif;
         }
         .ob-btn:hover { background: rgba(255,255,255,0.16); transform: scale(1.04); }
         .ob-btn-primary {
@@ -430,26 +437,44 @@
             var obOverlay = document.getElementById('onboarding-overlay');
             var authOverlay = document.getElementById('auth-overlay');
             if (!hasOnboarded) {
-                if (obOverlay) obOverlay.style.display = 'flex';
+                if (obOverlay) {
+                    obOverlay.style.display = 'flex';
+                    obOverlay.style.opacity = '1';
+                    obOverlay.style.pointerEvents = 'auto';
+                }
                 if (authOverlay) authOverlay.style.display = 'none';
             }
         })();
 
         var _obCurrent = 1;
         window.goSlide = function(num) {
-            if (num === _obCurrent) return;
-            var cur = document.getElementById('ob-slide-' + _obCurrent);
-            if (cur) { cur.classList.remove('active'); cur.classList.add('exit'); }
+            num = parseInt(num) || 1;
+            for (var i = 1; i <= 3; i++) {
+                var s = document.getElementById('ob-slide-' + i);
+                if (s) {
+                    if (i === num) {
+                        s.classList.remove('exit');
+                        s.classList.add('active');
+                        s.style.display = 'flex';
+                        s.style.opacity = '1';
+                        s.style.pointerEvents = 'auto';
+                    } else {
+                        s.classList.remove('active');
+                        s.classList.remove('exit');
+                        s.style.display = 'none';
+                        s.style.opacity = '0';
+                        s.style.pointerEvents = 'none';
+                    }
+                }
+            }
             _obCurrent = num;
             document.querySelectorAll('.ob-dot').forEach(function(d, i) {
                 d.classList.toggle('active', i + 1 === num);
             });
-            setTimeout(function() {
-                var next = document.getElementById('ob-slide-' + num);
-                if (next) { next.classList.remove('exit'); next.classList.add('active'); }
-            }, 280);
         };
-        window.nextSlide = function(num) { window.goSlide(num); };
+        window.nextSlide = function(num) {
+            window.goSlide(num);
+        };
         window.finishOnboarding = function() {
             var obOverlay = document.getElementById('onboarding-overlay');
             var authOverlay = document.getElementById('auth-overlay');
@@ -471,8 +496,36 @@
                         }, 50);
                     }
                 }
-            }, 800);
+            }, 500);
         };
+
+        // Resilient Event Listeners for Linux, Mac & Windows
+        document.addEventListener('DOMContentLoaded', function() {
+            var s1Btn = document.querySelector('#ob-slide-1 .ob-btn');
+            if (s1Btn) s1Btn.addEventListener('click', function(e) { e.preventDefault(); window.goSlide(2); });
+
+            var s2Btn = document.querySelector('#ob-slide-2 .ob-btn');
+            if (s2Btn) s2Btn.addEventListener('click', function(e) { e.preventDefault(); window.goSlide(3); });
+
+            var s3Btn = document.querySelector('#ob-slide-3 .ob-btn');
+            if (s3Btn) s3Btn.addEventListener('click', function(e) { e.preventDefault(); window.finishOnboarding(); });
+
+            var skipBtn = document.getElementById('ob-skip');
+            if (skipBtn) skipBtn.addEventListener('click', function(e) { e.preventDefault(); window.finishOnboarding(); });
+        });
+
+        // Keyboard navigation (Enter / Space / Right Arrow to advance, Escape to skip)
+        window.addEventListener('keydown', function(e) {
+            var ob = document.getElementById('onboarding-overlay');
+            if (ob && ob.style.display !== 'none' && ob.style.opacity !== '0') {
+                if (e.key === 'Enter' || e.key === 'ArrowRight' || e.key === ' ') {
+                    if (_obCurrent < 3) window.nextSlide(_obCurrent + 1);
+                    else window.finishOnboarding();
+                } else if (e.key === 'Escape') {
+                    window.finishOnboarding();
+                }
+            }
+        });
     </script>
     <!-- END ONBOARDING OVERLAY -->
 
