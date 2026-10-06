@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceBeats - Masuk Akun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080808;
+            --bg-card: #111111;
+            --accent: #b3ff00;
+            --accent-glow: rgba(179, 255, 0, 0.25);
+            --text-primary: #f0ead6;
+            --text-secondary: #8a8070;
+            --border: rgba(240, 234, 214, 0.08);
+            --border-accent: rgba(179, 255, 0, 0.3);
+            --font-body: 'Outfit', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                linear-gradient(90deg, rgba(179, 255, 0, 0.02) 1px, transparent 1px),
+                linear-gradient(rgba(179, 255, 0, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .bg-glow {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(179, 255, 0, 0.08) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            filter: blur(50px);
+        }
+
+        .login-card {
+            position: relative;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 440px;
+            width: 100%;
+            padding: 44px 32px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(179, 255, 0, 0.06);
+            z-index: 10;
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+
+        .brand-logo {
+            width: 68px;
+            height: 68px;
+            object-fit: contain;
+            margin: 0 auto 16px;
+            filter: drop-shadow(0 0 20px rgba(179, 255, 0, 0.35));
+        }
+
+        .brand-title {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .brand-title span {
+            color: var(--accent);
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .btn-google {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: var(--font-body);
+            letter-spacing: 0.5px;
+            background-color: #ffffff;
+            color: #111111;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-google:hover {
+            background-color: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .google-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .auto-redirect-status {
+            margin-top: 20px;
+            font-size: 12px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .anim-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .footer-note {
+            margin-top: 28px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            padding-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="login-card">
+        <img src="../icebeats_logo.png" alt="IceBeats" class="brand-logo" onerror="this.style.display='none'">
+        <h1 class="brand-title">Ice<span>Beats</span></h1>
+        <p class="login-subtitle">Masuk dengan akun Google Anda untuk menghubungkan data profil, jam dengar, dan playlist ke IceBeats Desktop.</p>
+
+        <button class="btn-google" id="btnGoogleLogin" onclick="startGoogleAuth()">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" class="google-icon">
+            <span>Lanjutkan dengan Google</span>
+        </button>
+
+        <div class="auto-redirect-status" id="redirectStatus" style="display: none;">
+            <span class="material-symbols-outlined anim-spin" style="font-size: 16px;">sync</span>
+            <span>Mengarahkan ke Google...</span>
+        </div>
+
+        <div class="footer-note">
+            Dilindungi oleh Supabase Authentication resmi IceBeats.
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://jiytrtynlucsbbjpbybr.supabase.co";
+
+        function getRedirectUrl() {
+            // Default to callback page on the same origin
+            const queryParams = new URLSearchParams(window.location.search);
+            const session = queryParams.get('session');
+            const baseUrl = window.location.origin + window.location.pathname.replace(/login\.html|index\.html|login\/?$/, 'callback.html');
+            return session ? `${baseUrl}?session=${encodeURIComponent(session)}` : baseUrl;
+        }
+
+        function startGoogleAuth() {
+            const redirectTarget = getRedirectUrl();
+            const authUrl = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTarget)}`;
+            
+            document.getElementById('redirectStatus').style.display = 'flex';
+            document.getElementById('btnGoogleLogin').style.opacity = '0.7';
+            document.getElementById('btnGoogleLogin').style.pointerEvents = 'none';
+
+            window.location.href = authUrl;
+        }
+
+        // Auto redirect if session param exists
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('session')) {
+                // Save session in local storage for resilience
+                localStorage.setItem('icebeats_pending_session', params.get('session'));
+                // Auto trigger login after 600ms
+                setTimeout(startGoogleAuth, 600);
+            }
+        });
+    </script>
+</body>
+</html>

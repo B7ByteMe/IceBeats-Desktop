@@ -1,5 +1,3 @@
-/auth/callback   /auth/callback.html   200
-/auth/login      /auth/login.html      200
-/auth            /auth/login.html      200
-/login           /auth/login.html      200
-/callback        /auth/callback.html   200
+/login           /auth/login           302
+/callback        /auth/callback        302
+/auth            /auth/login           302

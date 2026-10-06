@@ -78,29 +78,29 @@ window.initQrLogin = async function() {
     };
 
     try {
-        // 1. Post to SQL table first (instant sync)
-        await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions`, {
-            method: 'POST',
-            headers: getSupabaseHeaders(),
-            body: JSON.stringify(sessionData)
-        });
-
-        // 2. Fallback to storage bucket in background if available
-        fetch(`${SUPABASE_URL}/storage/v1/object/backups/qr_sessions/${currentQrToken}.json`, {
-            method: 'POST',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'x-upsert': 'true',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(sessionData)
-        }).catch(() => {});
+        // Await publishing to both storage bucket AND SQL table for guaranteed mobile sync
+        await Promise.allSettled([
+            fetch(`${SUPABASE_URL}/storage/v1/object/backups/qr_sessions/${currentQrToken}.json`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'x-upsert': 'true',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(sessionData)
+            }),
+            fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions`, {
+                method: 'POST',
+                headers: getSupabaseHeaders(),
+                body: JSON.stringify(sessionData)
+            })
+        ]);
     } catch (e) {
         console.warn('Failed to publish initial QR session to cloud', e);
     }
 
-    // Start polling every 1000ms
+    // Start polling every 1200ms
     const startTime = Date.now();
     qrPollInterval = setInterval(async () => {
         // Expire after 5 minutes
@@ -115,39 +115,49 @@ window.initQrLogin = async function() {
         try {
             let sessionResult = null;
 
-            // 1. Check SQL table first (Primary & Fast)
-            const tableRes = await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions?id=eq.${currentQrToken}&select=*`, {
-                headers: getSupabaseHeaders()
-            });
-            if (tableRes.ok) {
-                const rows = await tableRes.json();
-                if (rows && rows.length > 0) sessionResult = rows[0];
-            }
+            // 1. Check storage bucket first (fastest sync with mobile app)
+            try {
+                const bucketRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/backups/qr_sessions/${currentQrToken}.json?_t=${Date.now()}`, {
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                if (bucketRes.ok) {
+                    const bData = await bucketRes.json();
+                    if (bData && (bData.status === 'approved' || bData.status === 'completed')) {
+                        sessionResult = bData;
+                    }
+                }
+            } catch(e) {}
 
-            // 2. Fallback check bucket only if not found in table
-            if (!sessionResult || sessionResult.status === 'pending') {
+            // 2. Check SQL table if not approved via bucket
+            if (!sessionResult) {
                 try {
-                    const bucketRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/backups/qr_sessions/${currentQrToken}.json?_t=${Date.now()}`, {
-                        headers: { 'Cache-Control': 'no-cache' }
+                    const tableRes = await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions?id=eq.${currentQrToken}&select=*`, {
+                        headers: getSupabaseHeaders()
                     });
-                    if (bucketRes.ok) {
-                        const bData = await bucketRes.json();
-                        if (bData && bData.status === 'approved') sessionResult = bData;
+                    if (tableRes.ok) {
+                        const rows = await tableRes.json();
+                        if (rows && rows.length > 0) {
+                            const r = rows[0];
+                            if (r.status === 'approved' || r.status === 'completed') {
+                                sessionResult = r;
+                            }
+                        }
                     }
                 } catch(e) {}
             }
 
-            if (sessionResult && sessionResult.status === 'approved') {
+            if (sessionResult && (sessionResult.status === 'approved' || sessionResult.status === 'completed')) {
                 clearInterval(qrPollInterval);
                 if (laser) laser.style.display = 'none';
                 if (statusText) statusText.innerHTML = '<span style="color:#1ed760;"><i class="fas fa-check-circle"></i> Berhasil! Menghubungkan akun...</span>';
 
-                // Save session details
-                const uid = sessionResult.user_id;
-                const email = sessionResult.user_email || 'user@icebeats.app';
-                const name = sessionResult.user_name || email.split('@')[0];
-                const avatar = sessionResult.user_avatar || '';
-                const token = sessionResult.auth_token || '';
+                // Save session details (support both direct fields and user_data)
+                const s = sessionResult.user_data || sessionResult;
+                const uid = s.user_id || s.uid;
+                const email = s.user_email || s.email || 'user@icebeats.app';
+                const name = s.user_name || s.name || email.split('@')[0];
+                const avatar = s.user_avatar || s.avatar || '';
+                const token = s.auth_token || s.access_token || '';
 
                 localStorage.setItem('auth_state', 'logged_in');
                 localStorage.setItem('auth_email', email);
@@ -182,7 +192,7 @@ window.initQrLogin = async function() {
         } catch (err) {
             console.error('Polling QR session error', err);
         }
-    }, 1500);
+    }, 1200);
 };
 
 /**
@@ -497,7 +507,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Google Sign-In setup via Website & Cloud Sync (https://icebeats.pages.dev)
+    // Google Sign-In setup via Local Server & Website / Cloud Sync
     let googleBrowserPollInterval = null;
 
     if (btnGoogle) {
@@ -505,27 +515,47 @@ document.addEventListener("DOMContentLoaded", () => {
             const sessionToken = `ib_g_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
             
             // 1. Register pending session to Supabase
+            const sessionData = {
+                id: sessionToken,
+                status: "pending",
+                created_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+            };
+
             try {
-                await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions`, {
-                    method: 'POST',
-                    headers: getSupabaseHeaders(),
-                    body: JSON.stringify({
-                        id: sessionToken,
-                        status: "pending",
-                        created_at: new Date().toISOString(),
-                        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+                await Promise.allSettled([
+                    fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions`, {
+                        method: 'POST',
+                        headers: getSupabaseHeaders(),
+                        body: JSON.stringify(sessionData)
+                    }),
+                    fetch(`${SUPABASE_URL}/storage/v1/object/backups/qr_sessions/${sessionToken}.json`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'x-upsert': 'true',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(sessionData)
                     })
-                });
+                ]);
             } catch (err) {
                 console.warn('Failed to publish Google session to Supabase', err);
             }
 
-            // 2. Open official website login link in external browser
-            const loginUrl = `https://icebeats.pages.dev/auth/login?session=${encodeURIComponent(sessionToken)}`;
+            // 2. Open login in external browser:
+            // Prefer direct local OAuth callback (fast, robust, no redirect loops)
+            // with seamless fallback to official website
+            const localLoginUrl = 'http://127.0.0.1:8000/auth/google/login';
+            const webLoginUrl = `https://icebeats.pages.dev/auth/login?session=${encodeURIComponent(sessionToken)}`;
+            const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || !!window.electronAPI;
+            const targetLoginUrl = isLocal ? localLoginUrl : webLoginUrl;
+
             if (window.electronAPI && window.electronAPI.openExternal) {
-                window.electronAPI.openExternal(loginUrl);
+                window.electronAPI.openExternal(targetLoginUrl);
             } else {
-                window.open(loginUrl, '_blank');
+                window.open(targetLoginUrl, '_blank');
             }
 
             btnGoogle.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menunggu login di browser...';
@@ -534,29 +564,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (googleBrowserPollInterval) clearInterval(googleBrowserPollInterval);
 
-            // 3. Poll Supabase Cloud and local server for completed session
+            // 3. Poll local server session and Supabase Cloud for completed session
             googleBrowserPollInterval = setInterval(async () => {
                 try {
                     let s = null;
 
-                    // Priority A: Poll Supabase cloud table
+                    // Priority A: Local server session (instantaneous for desktop app)
                     try {
-                        const supaRes = await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions?id=eq.${encodeURIComponent(sessionToken)}&select=*`, {
-                            headers: getSupabaseHeaders()
-                        });
-                        const supaRows = await supaRes.json();
-                        if (Array.isArray(supaRows) && supaRows.length > 0 && supaRows[0].status === 'completed' && supaRows[0].user_data) {
-                            s = supaRows[0].user_data;
+                        const res = await fetch('/api/auth/session');
+                        const json = await res.json();
+                        if (json && json.logged_in && json.session) {
+                            s = json.session;
                         }
                     } catch (e) {}
 
-                    // Priority B: Fallback to local server session
+                    // Priority B: Supabase cloud SQL table
                     if (!s) {
                         try {
-                            const res = await fetch('/api/auth/session');
-                            const json = await res.json();
-                            if (json && json.logged_in && json.session) {
-                                s = json.session;
+                            const supaRes = await fetch(`${SUPABASE_URL}/rest/v1/auth_qr_sessions?id=eq.${encodeURIComponent(sessionToken)}&select=*`, {
+                                headers: getSupabaseHeaders()
+                            });
+                            const supaRows = await supaRes.json();
+                            if (Array.isArray(supaRows) && supaRows.length > 0) {
+                                const row = supaRows[0];
+                                if (row.status === 'completed' || row.status === 'approved') {
+                                    s = row.user_data || {
+                                        uid: row.user_id,
+                                        email: row.user_email,
+                                        name: row.user_name,
+                                        avatar: row.user_avatar,
+                                        access_token: row.auth_token
+                                    };
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    // Priority C: Supabase cloud storage bucket
+                    if (!s) {
+                        try {
+                            const bucketRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/backups/qr_sessions/${encodeURIComponent(sessionToken)}.json?_t=${Date.now()}`, {
+                                headers: { 'Cache-Control': 'no-cache' }
+                            });
+                            if (bucketRes.ok) {
+                                const bData = await bucketRes.json();
+                                if (bData && (bData.status === 'completed' || bData.status === 'approved')) {
+                                    s = bData.user_data || {
+                                        uid: bData.user_id,
+                                        email: bData.user_email,
+                                        name: bData.user_name,
+                                        avatar: bData.user_avatar,
+                                        access_token: bData.auth_token
+                                    };
+                                }
                             }
                         } catch (e) {}
                     }
@@ -565,12 +625,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         clearInterval(googleBrowserPollInterval);
                         googleBrowserPollInterval = null;
 
-                        const uid = s.uid || 'g_' + (s.email || 'user').replace(/[^a-zA-Z0-9]/g, '_');
-                        const name = s.name || (s.email ? s.email.split('@')[0] : 'User');
-                        const avatar = s.avatar || '';
+                        const uid = s.uid || s.user_id || 'g_' + (s.email || s.user_email || 'user').replace(/[^a-zA-Z0-9]/g, '_');
+                        const name = s.name || s.user_name || ((s.email || s.user_email) ? (s.email || s.user_email).split('@')[0] : 'User');
+                        const avatar = s.avatar || s.user_avatar || '';
+                        const accessToken = s.access_token || s.auth_token || '';
 
                         localStorage.setItem('auth_state', 'logged_in');
-                        if (s.email) localStorage.setItem('auth_email', s.email);
+                        if (s.email || s.user_email) localStorage.setItem('auth_email', s.email || s.user_email);
                         localStorage.setItem('icebeats_user_id', uid);
                         localStorage.setItem('airbeats_user_id', uid);
                         localStorage.setItem('icebeats_user_name', name);
@@ -579,8 +640,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             localStorage.setItem('icebeats_user_avatar', avatar);
                             localStorage.setItem('airbeats_user_avatar', avatar);
                         }
-                        if (s.access_token) {
-                            localStorage.setItem('supabase_access_token', s.access_token);
+                        if (accessToken) {
+                            localStorage.setItem('supabase_access_token', accessToken);
                         }
                         window.isGuestMode = false;
 

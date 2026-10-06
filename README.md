@@ -64,15 +64,15 @@ IceBeats Desktop is a fast, lightweight, and modern music streaming client for W
 Download the latest version from the **[Releases](https://github.com/B7ByteMe/IceBeats-Desktop/releases)** page:
 
 ### 🪟 Windows (10 / 11)
-- **Installer:** Download `IceBeats-v0.0.5-setup.exe` and follow the setup wizard.
-- **Portable:** Download `IceBeats-v0.0.5-portable.exe` to run directly without installation.
+- **Installer:** Download `IceBeats-v0.0.6-setup.exe` and follow the setup wizard.
+- **Portable:** Download `IceBeats-v0.0.6-portable.exe` to run directly without installation.
 
 ### 🐧 Linux
-- **AppImage:** Download `IceBeats-v0.0.5-linux.AppImage`, make it executable (`chmod +x`), and run.
-- **Debian / Ubuntu:** Download `IceBeats-v0.0.5-linux.deb` and install via `sudo dpkg -i`.
+- **AppImage:** Download `IceBeats-v0.0.6-linux.AppImage`, make it executable (`chmod +x`), and run.
+- **Debian / Ubuntu:** Download `IceBeats-v0.0.6-linux.deb` and install via `sudo dpkg -i`.
 
 ### 🍎 macOS
-- **Apple Disk Image:** Download `IceBeats-v0.0.5-mac.dmg`, open it, and drag IceBeats into your Applications folder.
+- **Apple Disk Image:** Download `IceBeats-v0.0.6-mac.dmg`, open it, and drag IceBeats into your Applications folder.
 
 ---
 

@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (default 0.0.5)'
+        description: 'Release version (default 0.0.6)'
         required: false
-        default: '0.0.5'
+        default: '0.0.6'
   push:
     tags:
       - 'v*'
@@ -270,7 +270,7 @@ jobs:
     - name: Create or Update GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        repository: ${{ secrets.TARGET_REPO || 'B7ByteMe/IceBeats-Desktop' }}
+        repository: B7ByteMe/IceBeats-Desktop
         token: ${{ secrets.TARGET_REPO_PAT || secrets.GITHUB_TOKEN }}
         tag_name: ${{ steps.release_meta.outputs.tag }}
         name: IceBeats Desktop ${{ steps.release_meta.outputs.tag }}
